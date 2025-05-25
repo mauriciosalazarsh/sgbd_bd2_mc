@@ -1,8 +1,6 @@
 # engine.py
 import csv
-
 from typing import List, Any, Tuple, Dict
-from typing import Any
 from indices.sequential import SequentialFile
 from indices.isam import ISAM
 from indices.hash_extensible import ExtendibleHash
@@ -24,19 +22,20 @@ class Engine:
                         f'{table}_index.bin',
                         schema,
                         index_field)
-        if tipo == 'hash':
+        elif tipo == 'hash':
             return ExtendibleHash(
                 dir_file=f'indices/{table}_dir.pkl',
                 data_file=f'data/{table}_data.bin'
             )
         elif tipo == 'bplustree':
-            return BPlusTree(f'{table}_btree.pkl')
+            tree = BPlusTree(f'{table}_btree.pkl')
+            tree.field_index = index_field  # ← para que pueda hacer búsqueda por columna
+            return tree
         elif tipo == 'rtree':
             return MultidimensionalRTree(path=f'{table}_rtree',
                                         dimension=2)
         else:
             raise ValueError(f"Tipo de índice '{tipo}' no soportado")
-
 
     def load_csv(self,
                 table: str,
@@ -58,6 +57,13 @@ class Engine:
             idx = self._init_index(tipo, table, index_field, schema)
             idx.load_csv(data_dicts)  # type: ignore
 
+        elif tipo == 'bplustree':
+            # Para B+ Tree, establecer el field_index y usar load_csv simple
+            idx = self._init_index(tipo, table, index_field, None)
+            # Establecer la columna a indexar antes de cargar
+            idx.field_index = index_field
+            idx.load_csv(path)
+
         else:
             # Para índices que no usan esquema (como sequential)
             with open(path, newline='', encoding='latin1') as f:
@@ -66,7 +72,7 @@ class Engine:
             schema = None
             idx = self._init_index(tipo, table, index_field, schema)
 
-            if hasattr(idx, 'load_csv'):
+            if hasattr(idx, 'load_csv') and tipo != 'bplustree':
                 idx.load_csv(path)
             else:
                 for row in rows:
@@ -74,7 +80,6 @@ class Engine:
 
         self.tables[table] = idx
         return f"Tabla '{table}' cargada con éxito usando índice {tipo}"
-
 
     def insert(self, table: str, values: List[str]) -> str:
         if table not in self.tables:
@@ -95,8 +100,6 @@ class Engine:
             return str(r)
 
         return '\n'.join(to_str(r) for r in registros)
-
-
 
     def search(self,
             table: str,
@@ -133,7 +136,6 @@ class Engine:
             else:
                 final_result.append(str(r))
         return final_result
-
 
     def range_search(self,
                         table: str,
@@ -192,14 +194,3 @@ class Engine:
         if hasattr(idx, 'remove'):
             return idx.remove(key)
         raise NotImplementedError("El índice no soporta eliminación")
-
-
-
-        # 2) Aplica el resto de condiciones con full‐scan
-        filtered: List[str] = []
-        for row in base_rows:
-            cols = [c.strip() for c in row.split('|')]
-            if all(col < len(cols) and cols[col] == val
-                   for col, val in conditions):
-                filtered.append(row)
-        return filtere

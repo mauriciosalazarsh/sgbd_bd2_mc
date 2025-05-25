@@ -1,0 +1,21 @@
+# FastAPI y dependencias relacionadas
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-multipart==0.0.6
+
+# Para manejo de archivos y datos
+python-csv==0.0.13
+
+# Para R-Tree (datos espaciales)
+rtree==1.1.0
+
+# Utilidades generales
+typing-extensions==4.8.0
+
+# Para desarrollo y testing (opcional)
+pytest==7.4.3
+requests==2.31.0
+
+# Para logging y debugging
+python-dotenv==1.0.0

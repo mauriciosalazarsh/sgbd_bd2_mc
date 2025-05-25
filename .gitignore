@@ -1,6 +1,13 @@
 # .gitignore
-venv/
+
+# Python
 __pycache__/
 *.pyc
 *.pkl
-*.zip
+venv/
+
+# React
+node_modules/
+.next/
+dist/
+.env

@@ -37,10 +37,13 @@ class Engine:
                         schema,
                         index_field)
         elif tipo == 'hash':
-            return ExtendibleHash(
-                dir_file=f'indices/{table}_dir.pkl',
-                data_file=f'data/{table}_data.bin'
+            # CORREGIDO: Hash Extensible con configuración apropiada
+            hash_idx = ExtendibleHash(
+                dir_file=f'indices/{table}_hash_dir.pkl',
+                data_file=f'indices/{table}_hash_data.bin'
             )
+            hash_idx.field_index = index_field  # Configurar campo indexado
+            return hash_idx
         elif tipo == 'bplustree':
             tree = BPlusTree(f'{table}_btree.pkl')
             tree.field_index = index_field
@@ -101,6 +104,13 @@ class Engine:
             if hasattr(idx, 'load_csv'):
                 idx.load_csv(data_dicts)  # type: ignore
 
+        elif tipo == 'hash':
+            # CORREGIDO: Hash Extensible manejo específico
+            idx = self._init_index(tipo, table, index_field, None)
+            # Configurar el campo indexado ANTES de cargar datos
+            idx.field_index = index_field
+            idx.load_csv(path)  # Solo pasar path
+
         elif tipo == 'bplustree':
             # B+ Tree
             idx = self._init_index(tipo, table, index_field, None)
@@ -108,7 +118,7 @@ class Engine:
             idx.load_csv(path)
 
         else:
-            # Otros índices (sequential, hash)
+            # Otros índices (sequential)
             with open(path, newline='', encoding='latin1') as f:
                 reader = csv.reader(f)
                 rows = list(reader)
@@ -124,13 +134,20 @@ class Engine:
         # Guardar índice en tabla
         self.tables[table] = idx
         
-        # Mensaje de resultado
+        # Mensaje de resultado con estadísticas específicas para hash
         headers_count = len(self.table_headers.get(table, []))
         tipo_real = type(idx).__name__
         
-        # Información adicional para R-Tree - CORREGIDO
+        # Información adicional por tipo de índice
         extra_info = ""
-        if RTREE_AVAILABLE and MultidimensionalRTree and isinstance(idx, MultidimensionalRTree):
+        
+        if isinstance(idx, ExtendibleHash):
+            # NUEVO: Estadísticas de Hash
+            if hasattr(idx, 'get_stats'):
+                stats = idx.get_stats()
+                extra_info = f" (Profundidad global: {stats['global_depth']}, {stats['total_records']} registros, {stats['total_buckets']} buckets)"
+            
+        elif RTREE_AVAILABLE and MultidimensionalRTree and isinstance(idx, MultidimensionalRTree):
             # Usar getattr para acceso seguro al atributo
             records_loaded = getattr(idx, 'data_map', {})
             if isinstance(records_loaded, dict):
@@ -155,7 +172,8 @@ class Engine:
         
         index = self.tables[table_name]
         
-        return {
+        # NUEVO: Información específica para Hash
+        info = {
             'name': table_name,
             'index_type': type(index).__name__,
             'headers': self.get_table_headers(table_name),
@@ -163,6 +181,12 @@ class Engine:
             'field_index': getattr(index, 'field_index', None),
             'headers_count': len(self.get_table_headers(table_name))
         }
+        
+        # Agregar estadísticas específicas para Hash
+        if isinstance(index, ExtendibleHash) and hasattr(index, 'get_stats'):
+            info['hash_stats'] = index.get_stats()
+        
+        return info
     
     def list_all_tables_info(self) -> Dict[str, dict]:
         """Obtener información de todas las tablas cargadas"""
@@ -226,7 +250,7 @@ class Engine:
             val_dict = self._list_to_isam_dict(table, values)
             idx.insert(None, val_dict)
         else:
-            # Para otros índices, usar el método original
+            # Para otros índices (incluido Hash), usar el método original
             idx.insert(None, values)
         
         return f"Registro insertado en '{table}'"
@@ -258,7 +282,7 @@ class Engine:
                     formatted_records.append(csv_record)
             return '\n'.join(formatted_records)
         
-        # Manejo para otros tipos de índices
+        # Manejo para otros tipos de índices (incluye Hash mejorado)
         formatted_records = []
         for record in registros:
             csv_record = self._format_record_to_csv(record)
@@ -272,16 +296,19 @@ class Engine:
             raise ValueError(f"Tabla '{table}' no encontrada")
         idx = self.tables[table]
 
-        # Si el índice tiene search() y es sobre la misma columna
-        if hasattr(idx, 'search') and getattr(idx, 'field_index', None) == column:
-            resultados = idx.search(key)
-            final_result = []
-            for r in resultados:
-                csv_record = self._format_record_to_csv(r)
-                final_result.append(csv_record)
-            return final_result
+        # MEJORADO: Optimización para Hash y otros índices con búsqueda directa
+        if hasattr(idx, 'search') and hasattr(idx, 'field_index') and idx.field_index == column:
+            try:
+                resultados = idx.search(key)
+                final_result = []
+                for r in resultados:
+                    csv_record = self._format_record_to_csv(r)
+                    final_result.append(csv_record)
+                return final_result
+            except Exception as e:
+                print(f"Error en búsqueda directa, usando full scan: {e}")
         
-        # Full-scan + filtro manual
+        # Full-scan + filtro manual (fallback)
         resultados = []
         all_records = idx.scan_all()
         
@@ -301,7 +328,7 @@ class Engine:
                         resultados.append(csv_record)
             return resultados
         
-        # Para otros índices
+        # Para otros índices (incluye Hash Extensible)
         for row in all_records:
             match_found = False
             
@@ -376,6 +403,10 @@ class Engine:
             except Exception as e:
                 raise ValueError(f"Error en búsqueda espacial R-Tree: {e}")
         
+        # NUEVO: Hash Extensible NO soporta rangos (comportamiento correcto)
+        if isinstance(idx, ExtendibleHash):
+            raise ValueError("Hash Extensible no soporta búsquedas por rango. Use ISAM o B+ Tree para rangos.")
+        
         # ——— OTROS TIPOS DE ÍNDICES ———
         if hasattr(idx, 'range_search'):
             raw_results = idx.range_search(begin_key, end_key)
@@ -419,7 +450,16 @@ class Engine:
         idx = self.tables[table]
         
         if hasattr(idx, 'remove'):
-            raw_results = idx.remove(key)
-            return [self._format_record_to_csv(r) for r in raw_results]
+            try:
+                raw_results = idx.remove(key)
+                
+                # NUEVO: Hash devuelve strings CSV directamente, otros necesitan formateo
+                if isinstance(idx, ExtendibleHash):
+                    return raw_results  # Ya están en formato CSV
+                else:
+                    # Otros índices devuelven objetos que necesitan formateo
+                    return [self._format_record_to_csv(r) for r in raw_results]
+            except Exception as e:
+                raise ValueError(f"Error eliminando registros: {e}")
         
         raise NotImplementedError("El índice no soporta eliminación")

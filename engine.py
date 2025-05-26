@@ -293,7 +293,7 @@ class Engine:
    # engine.py - REEMPLAZAR COMPLETAMENTE el método search con esta versión:
 
     def search(self, table: str, key: str, column: int) -> List[str]:
-        """Buscar registros y devolverlos en formato CSV - VERSIÓN FINAL CORREGIDA"""
+        """Buscar registros y devolverlos en formato CSV - VERSIÓN CORREGIDA PARA SEQUENTIAL FILE"""
         if table not in self.tables:
             raise ValueError(f"Tabla '{table}' no encontrada")
         idx = self.tables[table]
@@ -351,7 +351,7 @@ class Engine:
             print(f"{'='*60}")
             return resultados
         
-        # PARA OTROS ÍNDICES (incluye Hash) - LÓGICA COMPLETAMENTE REESCRITA
+        # PARA OTROS ÍNDICES - LÓGICA CORREGIDA PARA SEQUENTIAL FILE
         matches_found = 0
         
         for row_index, row in enumerate(all_records):
@@ -371,20 +371,29 @@ class Engine:
                         cell_value = str(row[column]).strip()
                         
                 elif isinstance(row, str):
-                    # String CSV
+                    # String - CORREGIDO PARA SEQUENTIAL FILE
                     import csv
                     import io
-                    try:
-                        # Usar csv.reader para parsing robusto
-                        reader = csv.reader(io.StringIO(row.strip()))
-                        cols = next(reader, [])
+                    
+                    # DETECCIÓN AUTOMÁTICA DEL FORMATO
+                    if '|' in row:
+                        # Sequential File usa separador |
+                        cols = [c.strip() for c in row.split('|')]
                         if column < len(cols):
                             cell_value = cols[column].strip()
-                    except Exception:
-                        # Fallback: split simple
-                        cols = [c.strip() for c in row.split(',')]
-                        if column < len(cols):
-                            cell_value = cols[column].strip()
+                    else:
+                        # Otros índices usan formato CSV
+                        try:
+                            # Usar csv.reader para parsing robusto
+                            reader = csv.reader(io.StringIO(row.strip()))
+                            cols = next(reader, [])
+                            if column < len(cols):
+                                cell_value = cols[column].strip()
+                        except Exception:
+                            # Fallback: split por comas
+                            cols = [c.strip() for c in row.split(',')]
+                            if column < len(cols):
+                                cell_value = cols[column].strip()
                 
                 else:
                     # Tipo desconocido
@@ -393,7 +402,8 @@ class Engine:
                 
                 # DEBUG para los primeros 5 registros
                 if row_index < 5:
-                    print(f"🔍 Row {row_index}: column[{column}]='{cell_value}' vs key='{key}' -> match={cell_value == str(key).strip() if cell_value else False}")
+                    separator = "|" if isinstance(row, str) and "|" in row else ","
+                    print(f"🔍 Row {row_index} (sep='{separator}'): column[{column}]='{cell_value}' vs key='{key}' -> match={cell_value == str(key).strip() if cell_value else False}")
                 
                 # COMPARACIÓN EXACTA
                 if cell_value is not None and cell_value == str(key).strip():

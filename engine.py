@@ -290,34 +290,55 @@ class Engine:
         
         return '\n'.join(formatted_records)
 
+   # engine.py - REEMPLAZAR COMPLETAMENTE el método search con esta versión:
+
     def search(self, table: str, key: str, column: int) -> List[str]:
-        """Buscar registros y devolverlos en formato CSV"""
+        """Buscar registros y devolverlos en formato CSV - VERSIÓN FINAL CORREGIDA"""
         if table not in self.tables:
             raise ValueError(f"Tabla '{table}' no encontrada")
         idx = self.tables[table]
 
-        # MEJORADO: Optimización para Hash y otros índices con búsqueda directa
-        if hasattr(idx, 'search') and hasattr(idx, 'field_index') and idx.field_index == column:
+        print(f"\n{'='*60}")
+        print(f"🔍 SEARCH DEBUG - Buscando en tabla '{table}'")
+        print(f"   - Clave: '{key}'")
+        print(f"   - Columna: {column}")
+        print(f"   - Tipo de índice: {type(idx).__name__}")
+        
+        # Obtener headers para referencia
+        headers = self.get_table_headers(table)
+        if column < len(headers):
+            print(f"   - Nombre de columna: '{headers[column]}'")
+        
+        # OPTIMIZACIÓN: Hash con búsqueda directa (solo si coincide el field_index)
+        if (hasattr(idx, 'search') and hasattr(idx, 'field_index') and 
+            idx.field_index == column and isinstance(idx, ExtendibleHash)):
             try:
+                print(f"🚀 Usando búsqueda directa del Hash (field_index={idx.field_index})")
                 resultados = idx.search(key)
                 final_result = []
                 for r in resultados:
                     csv_record = self._format_record_to_csv(r)
                     final_result.append(csv_record)
+                print(f"✅ Búsqueda directa encontró {len(final_result)} registros")
+                print(f"{'='*60}")
                 return final_result
             except Exception as e:
-                print(f"Error en búsqueda directa, usando full scan: {e}")
+                print(f"❌ Error en búsqueda directa: {e}")
         
-        # Full-scan + filtro manual (fallback)
+        # FULL SCAN con filtro manual - VERSIÓN CORREGIDA
+        print(f"🔄 Usando full scan con filtro manual")
         resultados = []
         all_records = idx.scan_all()
+        total_records = len(all_records)
+        print(f"📊 Escaneando {total_records} registros totales")
         
-        # Caso especial para R-Tree - CORREGIDO
+        # Caso especial para R-Tree
         if RTREE_AVAILABLE and MultidimensionalRTree and isinstance(idx, MultidimensionalRTree):
+            print(f"🗺️ Procesando R-Tree...")
             for vector, obj in all_records:
                 if isinstance(obj, list) and column < len(obj):
-                    if str(obj[column]) == str(key):
-                        # Formatear como CSV
+                    obj_value = str(obj[column]).strip()
+                    if obj_value == str(key).strip():
                         cleaned_values = []
                         for v in obj:
                             cleaned = str(v).strip()
@@ -326,31 +347,71 @@ class Engine:
                             cleaned_values.append(cleaned)
                         csv_record = ','.join(cleaned_values)
                         resultados.append(csv_record)
+            print(f"✅ R-Tree encontró {len(resultados)} registros")
+            print(f"{'='*60}")
             return resultados
         
-        # Para otros índices (incluye Hash Extensible)
-        for row in all_records:
-            match_found = False
-            
-            if isinstance(row, dict):
-                values = list(row.values())
-                if column < len(values) and str(values[column]) == str(key):
-                    match_found = True
-            elif isinstance(row, (list, tuple)):
-                if column < len(row) and str(row[column]) == str(key):
-                    match_found = True
-            elif isinstance(row, str):
-                if '|' in row:
-                    cols = [c.strip() for c in row.split('|')]
+        # PARA OTROS ÍNDICES (incluye Hash) - LÓGICA COMPLETAMENTE REESCRITA
+        matches_found = 0
+        
+        for row_index, row in enumerate(all_records):
+            try:
+                # Extraer valor de la columna objetivo
+                cell_value = None
+                
+                if isinstance(row, dict):
+                    # Diccionario (ISAM)
+                    values = list(row.values())
+                    if column < len(values):
+                        cell_value = str(values[column]).strip()
+                        
+                elif isinstance(row, (list, tuple)):
+                    # Lista/tupla (Hash, B+Tree)
+                    if column < len(row):
+                        cell_value = str(row[column]).strip()
+                        
+                elif isinstance(row, str):
+                    # String CSV
+                    import csv
+                    import io
+                    try:
+                        # Usar csv.reader para parsing robusto
+                        reader = csv.reader(io.StringIO(row.strip()))
+                        cols = next(reader, [])
+                        if column < len(cols):
+                            cell_value = cols[column].strip()
+                    except Exception:
+                        # Fallback: split simple
+                        cols = [c.strip() for c in row.split(',')]
+                        if column < len(cols):
+                            cell_value = cols[column].strip()
+                
                 else:
-                    cols = [c.strip() for c in row.split(',')]
-                if column < len(cols) and cols[column] == key:
-                    match_found = True
-            
-            if match_found:
-                csv_record = self._format_record_to_csv(row)
-                resultados.append(csv_record)
+                    # Tipo desconocido
+                    print(f"⚠️ Tipo de registro desconocido: {type(row)}")
+                    continue
+                
+                # DEBUG para los primeros 5 registros
+                if row_index < 5:
+                    print(f"🔍 Row {row_index}: column[{column}]='{cell_value}' vs key='{key}' -> match={cell_value == str(key).strip() if cell_value else False}")
+                
+                # COMPARACIÓN EXACTA
+                if cell_value is not None and cell_value == str(key).strip():
+                    csv_record = self._format_record_to_csv(row)
+                    resultados.append(csv_record)
+                    matches_found += 1
+                    
+                    # Debug para coincidencias
+                    if matches_found <= 3:  # Mostrar las primeras 3 coincidencias
+                        print(f"✅ COINCIDENCIA {matches_found}: {csv_record[:100]}...")
+                    
+            except Exception as e:
+                if row_index < 5:  # Solo mostrar errores para los primeros registros
+                    print(f"❌ Error procesando row {row_index}: {e}")
+                continue
 
+        print(f"📊 RESULTADO FINAL: {matches_found} registros coinciden de {total_records} totales")
+        print(f"{'='*60}")
         return resultados
 
     def range_search(self, table: str, begin_key: str, end_key: str) -> List[str]:

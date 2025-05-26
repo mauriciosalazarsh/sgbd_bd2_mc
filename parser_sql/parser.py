@@ -1,4 +1,4 @@
-# parser_sql/parser.py - VERSIÓN FINAL CON GENERACIÓN DE DATOS CORREGIDA PARA ISAM
+# parser_sql/parser.py - VERSIÓN FINAL COMPLETA CON TODAS LAS CORRECCIONES
 
 import re
 import os
@@ -196,8 +196,6 @@ class SQLParser:
         
         return record
 
-    # ========== MÉTODOS DE GENERATE FROM SELECT (sin cambios) ==========
-    
     def _generate_from_select(self, table_name: str, select_clause: str, count: int, start_id: int = 1) -> str:
         """
         Genera datos basados en una cláusula SELECT personalizada
@@ -266,8 +264,6 @@ class SQLParser:
             if hasattr(self, '_current_table'):
                 delattr(self, '_current_table')
 
-    # ========== MÉTODOS ORIGINALES (sin cambios) ==========
-    
     def _evaluate_select_clause(self, select_clause: str, row_number: int) -> List[str]:
         """
         Evalúa una cláusula SELECT y genera valores ajustados al esquema de la tabla
@@ -547,13 +543,16 @@ class SQLParser:
 
     def _parse_select(self, query: str) -> List[str]:
         """
-        Parsea diferentes tipos de SELECT con prioridad correcta
+        Parsea diferentes tipos de SELECT con DEBUG MEJORADO
         """
+        print(f"\n🔍 PARSEANDO SELECT: {query}")
+        
         # SELECT básico sin WHERE
-        basic_pattern = r'select\s+\*\s+from\s+(\w+)'
-        match = re.search(basic_pattern, query, re.IGNORECASE)
+        basic_pattern = r'select\s+\*\s+from\s+(\w+)$'
+        match = re.search(basic_pattern, query.strip(), re.IGNORECASE)
         if match:
             table_name = match.group(1)
+            print(f"✅ SELECT básico detectado para tabla: {table_name}")
             result = self.engine.scan(table_name)
             return result.split('\n') if result else []
         
@@ -569,15 +568,40 @@ class SQLParser:
             
             return self.engine.range_search(table_name, point, param)
         
-        # SELECT con WHERE simple (equality)
+        # SELECT con WHERE simple (equality) - CON DEBUG COMPLETO
         equality_pattern = r'select\s+\*\s+from\s+(\w+)\s+where\s+(\w+)\s*=\s*(.+)'
         match = re.search(equality_pattern, query, re.IGNORECASE)
         if match:
             table_name = match.group(1)
             column_name = match.group(2)
             value = match.group(3).strip().strip('"\'')
-            column_index = self._get_column_index_from_table(table_name, column_name)
-            return self.engine.search(table_name, value, column_index)
+            
+            print(f"✅ SELECT con WHERE detectado:")
+            print(f"   - Tabla: {table_name}")
+            print(f"   - Columna: {column_name}")
+            print(f"   - Valor: {value}")
+            
+            try:
+                # Obtener índice de columna CON DEBUG
+                column_index = self._get_column_index_from_table(table_name, column_name)
+                
+                # Ejecutar búsqueda CON DEBUG
+                print(f"\n🔄 EJECUTANDO BÚSQUEDA:")
+                print(f"   - engine.search('{table_name}', '{value}', {column_index})")
+                
+                result = self.engine.search(table_name, value, column_index)
+                
+                print(f"🎯 RESULTADO: {len(result)} registros encontrados")
+                if len(result) > 0:
+                    print(f"   - Primer resultado: {result[0][:100]}...")
+                
+                return result
+                
+            except Exception as e:
+                print(f"❌ ERROR en búsqueda: {e}")
+                import traceback
+                traceback.print_exc()
+                return []
         
         # SELECT con BETWEEN
         between_pattern = r'select\s+\*\s+from\s+(\w+)\s+where\s+(\w+)\s+between\s+(.+)\s+and\s+(.+)'
@@ -653,40 +677,122 @@ class SQLParser:
     
     def _get_column_index_from_table(self, table_name: str, column_name: str) -> int:
         """
-        Obtiene el índice de una columna desde una tabla ya cargada
+        Obtiene el índice de una columna desde una tabla ya cargada - VERSIÓN ULTRA ROBUSTA
         """
         if table_name not in self.engine.tables:
             raise ValueError(f"Tabla '{table_name}' no encontrada")
         
-        # Obtener una muestra para ver las columnas
-        try:
-            sample = self.engine.scan(table_name)
-            if sample:
-                first_row = sample.split('\n')[0]
-                headers = [col.strip() for col in first_row.split('|')]
-                
-                # Buscar por nombre
+        headers = self.engine.get_table_headers(table_name)
+        
+        if not headers:
+            print(f"❌ No hay headers para tabla '{table_name}'")
+            return 0
+        
+        # Normalizar nombre de columna buscada
+        search_name = column_name.lower().strip()
+        
+        print(f"\n🔍 BUSCANDO COLUMNA:")
+        print(f"   - Tabla: {table_name}")
+        print(f"   - Columna buscada: '{column_name}' → normalizada: '{search_name}'")
+        print(f"   - Headers disponibles ({len(headers)}): {headers}")
+        
+        # ESTRATEGIA 1: Búsqueda exacta (case insensitive)
+        for i, header in enumerate(headers):
+            header_normalized = header.strip().lower()
+            if header_normalized == search_name:
+                print(f"✅ MATCH EXACTO: '{header}' en posición {i}")
+                return i
+        
+        # ESTRATEGIA 2: Normalización de espacios/guiones
+        search_normalized = search_name.replace('_', ' ').replace('-', ' ').replace('.', ' ')
+        print(f"   - Búsqueda normalizada (espacios): '{search_normalized}'")
+        
+        for i, header in enumerate(headers):
+            header_normalized = header.strip().lower().replace('_', ' ').replace('-', ' ').replace('.', ' ')
+            if header_normalized == search_normalized:
+                print(f"✅ MATCH NORMALIZADO: '{header}' → '{header_normalized}' en posición {i}")
+                return i
+        
+        # ESTRATEGIA 3: Buscar palabras clave
+        search_words = search_normalized.split()
+        print(f"   - Palabras clave: {search_words}")
+        
+        for i, header in enumerate(headers):
+            header_words = header.strip().lower().replace('_', ' ').replace('-', ' ').split()
+            
+            # Verificar si todas las palabras de búsqueda están en el header
+            if all(word in header_words for word in search_words):
+                print(f"✅ MATCH POR PALABRAS: '{header}' contiene {search_words} en posición {i}")
+                return i
+            
+            # O si alguna palabra clave importante coincide
+            for search_word in search_words:
+                if len(search_word) > 3 and search_word in ' '.join(header_words):
+                    print(f"✅ MATCH PARCIAL: '{header}' contiene '{search_word}' en posición {i}")
+                    return i
+        
+        # ESTRATEGIA 4: Casos específicos conocidos
+        specific_mappings = {
+            'math_score': ['math score', 'math', 'mathematics score'],
+            'reading_score': ['reading score', 'reading'],
+            'writing_score': ['writing score', 'writing'],
+            'gender': ['gender', 'sex'],
+            'race': ['race', 'ethnicity', 'race/ethnicity'],
+            'education': ['education', 'parental level', 'parental level of education'],
+            'lunch': ['lunch'],
+            'test_prep': ['test preparation', 'test prep', 'preparation course']
+        }
+        
+        search_base = search_name.replace('_score', '').replace('_', ' ')
+        
+        for mapping_key, possible_matches in specific_mappings.items():
+            if search_name.startswith(mapping_key.replace('_', '')):
                 for i, header in enumerate(headers):
-                    if header.lower() == column_name.lower():
-                        return i
-                
-                # Si no encuentra por nombre, intentar convertir a número
-                try:
-                    index = int(column_name)
-                    if 0 <= index < len(headers):
-                        return index
-                except ValueError:
-                    pass
-        except:
+                    header_lower = header.strip().lower()
+                    for possible_match in possible_matches:
+                        if possible_match in header_lower:
+                            print(f"✅ MATCH ESPECÍFICO: '{header}' coincide con patrón '{possible_match}' en posición {i}")
+                            return i
+        
+        # ESTRATEGIA 5: Índice numérico
+        try:
+            index = int(column_name)
+            if 0 <= index < len(headers):
+                print(f"✅ ÍNDICE NUMÉRICO: usando posición {index} para '{headers[index]}'")
+                return index
+        except ValueError:
             pass
         
-        # Fallback: usar el campo indexado de la tabla
-        index = self.engine.tables[table_name]
-        if hasattr(index, 'field_index'):
-            return index.field_index
+        # ERROR: No encontrado
+        print(f"❌ COLUMNA NO ENCONTRADA")
+        print(f"💡 Sugerencias basadas en similitud:")
         
-        # Último recurso: asumir columna 0
-        return 0
+        # Mostrar sugerencias
+        suggestions = []
+        for i, header in enumerate(headers):
+            header_lower = header.lower()
+            similarity_score = 0
+            
+            # Calcular similaridad básica
+            for word in search_words:
+                if word in header_lower:
+                    similarity_score += 1
+            
+            if similarity_score > 0:
+                suggestions.append((similarity_score, i, header))
+        
+        # Ordenar por similaridad
+        suggestions.sort(reverse=True, key=lambda x: x[0])
+        
+        for score, idx, header in suggestions[:3]:
+            print(f"   - '{header}' (posición {idx}) - similaridad: {score}")
+        
+        if suggestions:
+            best_match = suggestions[0]
+            print(f"🎯 USANDO MEJOR COINCIDENCIA: '{best_match[2]}' en posición {best_match[1]}")
+            return best_match[1]
+        
+        raise ValueError(f"Columna '{column_name}' no encontrada. Columnas disponibles: {headers}")
     
     def _parse_values(self, values_str: str) -> List[str]:
         """
@@ -722,3 +828,101 @@ class SQLParser:
             values.append(current_value.strip().strip('"\''))
         
         return values
+
+    # ========== FUNCIONES DE DEBUG ADICIONALES ==========
+    
+    def debug_where_issue_complete(self, query: str):
+        """
+        Debug completo del problema WHERE
+        """
+        print(f"\n{'='*80}")
+        print(f"🔍 DEBUG COMPLETO WHERE CLAUSE")
+        print(f"{'='*80}")
+        print(f"📋 Query original: {query}")
+        
+        # 1. Parsear la consulta
+        equality_pattern = r'select\s+\*\s+from\s+(\w+)\s+where\s+(\w+)\s*=\s*(.+)'
+        match = re.search(equality_pattern, query, re.IGNORECASE)
+        
+        if not match:
+            print("❌ ERROR: Query no coincide con patrón WHERE")
+            return
+        
+        table_name = match.group(1)
+        column_name = match.group(2)
+        value = match.group(3).strip().strip('"\'')
+        
+        print(f"📋 Tabla: {table_name}")
+        print(f"📋 Columna buscada: '{column_name}'")
+        print(f"📋 Valor buscado: '{value}'")
+        
+        # 2. Verificar tabla
+        if table_name not in self.engine.tables:
+            print(f"❌ ERROR: Tabla '{table_name}' no encontrada")
+            return
+        
+        # 3. Obtener headers y mostrar información
+        headers = self.engine.get_table_headers(table_name)
+        print(f"📋 Headers disponibles ({len(headers)}): {headers}")
+        
+        # 4. Encontrar índice de columna CON DEBUG DETALLADO
+        print(f"\n🔍 PASO 1: Buscando índice de columna...")
+        try:
+            column_index = self._get_column_index_from_table(table_name, column_name)
+            print(f"✅ Índice encontrado: {column_index}")
+            if column_index < len(headers):
+                print(f"✅ Columna real: '{headers[column_index]}'")
+            else:
+                print(f"❌ ÍNDICE FUERA DE RANGO: {column_index} >= {len(headers)}")
+        except Exception as e:
+            print(f"❌ ERROR obteniendo índice: {e}")
+            return
+        
+        # 5. Obtener muestra de datos RAW
+        print(f"\n🔍 PASO 2: Analizando datos raw...")
+        idx = self.engine.tables[table_name]
+        raw_records = idx.scan_all()[:10]  # Primeros 10
+        
+        print(f"📊 Tipo de datos raw: {type(raw_records)}")
+        print(f"📊 Cantidad de registros: {len(raw_records)}")
+        
+        for i, record in enumerate(raw_records[:3]):  # Solo primeros 3
+            print(f"\n📊 Registro {i}:")
+            print(f"   Tipo: {type(record)}")
+            print(f"   Contenido: {record}")
+            
+            # Intentar extraer valor de la columna objetivo
+            try:
+                if isinstance(record, list):
+                    if column_index < len(record):
+                        col_value = str(record[column_index]).strip()
+                        print(f"   ✅ Valor en columna {column_index}: '{col_value}'")
+                        print(f"   ✅ ¿'{col_value}' == '{value}'? {col_value == value}")
+                    else:
+                        print(f"   ❌ Columna {column_index} fuera de rango (len={len(record)})")
+                elif isinstance(record, str):
+                    import csv
+                    import io
+                    try:
+                        reader = csv.reader(io.StringIO(record.strip()))
+                        cols = next(reader, [])
+                        print(f"   📊 Columnas parseadas: {cols}")
+                        if column_index < len(cols):
+                            col_value = cols[column_index].strip()
+                            print(f"   ✅ Valor en columna {column_index}: '{col_value}'")
+                            print(f"   ✅ ¿'{col_value}' == '{value}'? {col_value == value}")
+                        else:
+                            print(f"   ❌ Columna {column_index} fuera de rango (len={len(cols)})")
+                    except Exception as parse_e:
+                        print(f"   ❌ Error parseando CSV: {parse_e}")
+                        # Fallback split
+                        cols = record.split(',')
+                        print(f"   📊 Fallback split: {cols}")
+                        if column_index < len(cols):
+                            col_value = cols[column_index].strip()
+                            print(f"   ✅ Valor en columna {column_index}: '{col_value}'")
+                            print(f"   ✅ ¿'{col_value}' == '{value}'? {col_value == value}")
+            except Exception as e:
+                print(f"   ❌ Error extrayendo valor: {e}")
+        
+        print(f"{'='*80}")

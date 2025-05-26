@@ -45,7 +45,6 @@ class SequentialFile(BaseIndex):
                 self.num_campos = struct.unpack('i', f.read(4))[0]
                 self.format = self._gen_fmt(self.num_campos)
 
-
     def _gen_fmt(self, num_campos: int) -> str:
         return ''.join(['40s'] * num_campos) + 'i'
 
@@ -111,9 +110,27 @@ class SequentialFile(BaseIndex):
             for r in regs:
                 f.write(r.pack(self.format))
 
-
     def insert(self, _: None, values: List[str]) -> None:
-        rec = Registro(values)
+        # VALIDACIÓN: Verificar que el número de campos coincida
+        if self.num_campos == 0:
+            # Si no hay esquema definido, usar los valores proporcionados
+            self.num_campos = len(values)
+            self.format = self._gen_fmt(self.num_campos)
+            # Recrear archivos con el nuevo esquema
+            with open(self.data_file, 'wb') as f:
+                f.write(struct.pack('ii', -1, self.num_campos))
+            with open(self.aux_file, 'wb') as f:
+                f.write(struct.pack('ii', -1, self.num_campos))
+        
+        # Ajustar los valores al número de campos esperado
+        adjusted_values = values[:self.num_campos]  # Truncar si hay más
+        while len(adjusted_values) < self.num_campos:  # Rellenar si hay menos
+            adjusted_values.append("")
+        
+        # Truncar cada campo a 40 caracteres máximo
+        adjusted_values = [str(v)[:40] for v in adjusted_values]
+        
+        rec = Registro(adjusted_values)
         head = self._read_header(self.data_file)
 
         # Si está vacío, inserta como primer registro
@@ -143,7 +160,7 @@ class SequentialFile(BaseIndex):
         # 2) Si el auxiliar está lleno, rebuild y reintentar
         if self._count_records(self.aux_file) >= MAX_AUX:
             self.rebuild()
-            return self.insert(None, values)
+            return self.insert(None, adjusted_values)
 
         # 3) Insertar en auxiliar y calcular posición absoluta
         count_data = self._count_records(self.data_file)
@@ -167,10 +184,8 @@ class SequentialFile(BaseIndex):
                 f.seek(HEADER_SIZE + pidx * self._record_size())
                 f.write(prec.pack(self.format))
 
-        # 5) Actualizar número de campos en el header (por si cambió)
+        # 5) Actualizar número de campos en el header
         self._write_numcampos(self.data_file)
-
-
 
     def scan_all(self) -> List[str]:
         out = []
@@ -211,7 +226,6 @@ class SequentialFile(BaseIndex):
             if col < len(cols) and cols[col] == key.strip():
                 results.append(row)
         return results
-
 
     def range_search(self,
                      begin_key: str,

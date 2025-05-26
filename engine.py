@@ -1,4 +1,4 @@
-# engine.py - CORREGIDO para solucionar errores de tipos y importaciones
+# engine.py - CORREGIDO para solucionar errores de tipos y compatibilidad con ISAM
 
 import csv
 import os
@@ -22,7 +22,8 @@ class Engine:
     def __init__(self):
         self.tables: Dict[str, BaseIndex] = {}
         self.table_headers: Dict[str, List[str]] = {}      
-        self.table_file_paths: Dict[str, str] = {}         
+        self.table_file_paths: Dict[str, str] = {}
+        self.table_schemas: Dict[str, List[tuple]] = {}  # NUEVO: Guardar schemas para ISAM
 
     def _init_index(self, tipo: str, table: str, index_field: int, schema: Any) -> BaseIndex:
         """Inicializa un índice según su tipo"""
@@ -91,6 +92,8 @@ class Engine:
                 rows = list(reader)
 
             schema = [(f'col{i}', '20s', 20) for i in range(len(headers_isam))]
+            self.table_schemas[table] = schema  # NUEVO: Guardar schema
+            
             data_dicts = [dict(zip([f'col{i}' for i in range(len(row))], row)) for row in rows]
             
             idx = self._init_index(tipo, table, index_field, schema)
@@ -191,11 +194,41 @@ class Engine:
         
         return ','.join(cleaned_values)
 
+    def _list_to_isam_dict(self, table: str, values: List[str]) -> Dict[str, Any]:
+        """Convierte una lista de valores a diccionario para ISAM"""
+        if table not in self.table_schemas:
+            # Generar schema básico si no existe
+            schema = [(f'col{i}', '20s', 20) for i in range(len(values))]
+            self.table_schemas[table] = schema
+        else:
+            schema = self.table_schemas[table]
+        
+        # Crear diccionario usando las claves del schema
+        result = {}
+        for i, (field_name, _, _) in enumerate(schema):
+            if i < len(values):
+                result[field_name] = values[i]
+            else:
+                result[field_name] = ""  # Valor por defecto para campos faltantes
+        
+        return result
+
     def insert(self, table: str, values: List[str]) -> str:
-        """Insertar un registro en una tabla"""
+        """Insertar un registro en una tabla - CORREGIDO para ISAM"""
         if table not in self.tables:
             raise ValueError(f"Tabla '{table}' no encontrada")
-        self.tables[table].insert(None, values)
+        
+        idx = self.tables[table]
+        
+        # NUEVA LÓGICA: Manejo especial para ISAM
+        if isinstance(idx, ISAM):
+            # Convertir lista a diccionario para ISAM
+            val_dict = self._list_to_isam_dict(table, values)
+            idx.insert(None, val_dict)
+        else:
+            # Para otros índices, usar el método original
+            idx.insert(None, values)
+        
         return f"Registro insertado en '{table}'"
 
     def scan(self, table: str) -> str:

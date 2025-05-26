@@ -75,13 +75,11 @@ class SQLParser:
         
         return result
     
+   # REEMPLAZA EL MÉTODO _parse_select en parser_sql/parser.py
+
     def _parse_select(self, query: str) -> List[str]:
         """
-        Parsea diferentes tipos de SELECT:
-        - select * from Restaurantes where id = x
-        - select * from Restaurantes where nombre between x and y
-        - select * from Restaurantes where ubicacion in (point, radio)
-        - select * from Restaurantes
+        Parsea diferentes tipos de SELECT con prioridad correcta
         """
         # SELECT básico sin WHERE
         basic_pattern = r'select\s+\*\s+from\s+(\w+)$'
@@ -91,6 +89,25 @@ class SQLParser:
             result = self.engine.scan(table_name)
             return result.split('\n') if result else []
         
+        # SELECT con IN (consultas espaciales) - PRIORIDAD ALTA
+        # Patrón mejorado que maneja espacios y diferentes formatos
+        in_pattern = r'select\s+\*\s+from\s+(\w+)\s+where\s+(\w+)\s+in\s*\(\s*"([^"]+)"\s*,\s*([^)]+)\s*\)'
+        match = re.search(in_pattern, query, re.IGNORECASE)
+        if match:
+            table_name = match.group(1)
+            column_name = match.group(2)
+            point = match.group(3).strip()
+            param = match.group(4).strip().strip('"\'')
+            
+            # Verificar que es una tabla R-Tree
+            if table_name in self.engine.tables:
+                idx = self.engine.tables[table_name]
+                from indices.rtree import MultidimensionalRTree
+                if isinstance(idx, MultidimensionalRTree):
+                    return self.engine.range_search(table_name, point, param)
+            
+            return self.engine.range_search(table_name, point, param)
+        
         # SELECT con WHERE simple (equality)
         equality_pattern = r'select\s+\*\s+from\s+(\w+)\s+where\s+(\w+)\s*=\s*(.+)'
         match = re.search(equality_pattern, query, re.IGNORECASE)
@@ -98,7 +115,6 @@ class SQLParser:
             table_name = match.group(1)
             column_name = match.group(2)
             value = match.group(3).strip().strip('"\'')
-            
             column_index = self._get_column_index_from_table(table_name, column_name)
             return self.engine.search(table_name, value, column_index)
         
@@ -110,19 +126,7 @@ class SQLParser:
             column_name = match.group(2)
             begin_key = match.group(3).strip().strip('"\'')
             end_key = match.group(4).strip().strip('"\'')
-            
             return self.engine.range_search(table_name, begin_key, end_key)
-        
-        # SELECT con IN (para consultas espaciales) - ARREGLADO
-        in_pattern = r'select\s+\*\s+from\s+(\w+)\s+where\s+(\w+)\s+in\s*\("([^"]+)",\s*(.+)\)'
-        match = re.search(in_pattern, query, re.IGNORECASE)
-        if match:
-            table_name = match.group(1)
-            column_name = match.group(2)
-            point = match.group(3).strip()  # Ya no necesita strip de comillas
-            param = match.group(4).strip().strip('"\'')
-            
-            return self.engine.range_search(table_name, point, param)
         
         raise ValueError(f"Sintaxis SELECT no reconocida: {query}")
     

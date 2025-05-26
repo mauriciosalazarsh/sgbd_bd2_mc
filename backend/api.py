@@ -68,73 +68,119 @@ class APIResponse(BaseModel):
 # ========== UTILIDAD PARA PARSEAR CSV ==========
 # Reemplaza la función parse_csv_records en tu api.py con esto:
 
-def parse_csv_records(records: List[str], headers: List[str]) -> Dict[str, Any]:
+# ARREGLO PARA api.py - Reemplaza la función parse_csv_records
+
+# REEMPLAZA la función parse_csv_records en tu api.py con esta versión corregida:
+
+def parse_csv_records(records: List[Any], headers: List[str]) -> Dict[str, Any]:
     """
-    Parsea registros en formato CSV y los convierte al formato esperado por el frontend
-    VERSIÓN CORREGIDA
+    Parsea registros en formato CSV, listas o tuplas 
+    y los convierte al formato esperado por el frontend.
     """
-    if not records:
-        return {
-            "columns": headers,
-            "rows": [],
-            "count": 0
-        }
+    import csv
+    import io
     
     parsed_rows = []
-    for record in records:
-        if not record.strip():
-            continue
-            
-        # Verificar si el record ya es una lista/array
-        if isinstance(record, list):
-            # Ya es una lista, usarla directamente
-            row = [str(cell).strip() for cell in record]
-            parsed_rows.append(row)
-            continue
-            
-        # Si es string, parsearlo como CSV
-        try:
-            import io
-            csv_reader = csv.reader(io.StringIO(record.strip()))
-            row = next(csv_reader)
-            # Limpiar cada celda
-            cleaned_row = [str(cell).strip().strip('"') for cell in row]
-            parsed_rows.append(cleaned_row)
-        except Exception as e:
-            print(f"Error parseando record: {record[:100]}... Error: {e}")
-            # Fallback: split simple por comas
-            row = [str(cell).strip().strip('"') for cell in record.split(',')]
-            parsed_rows.append(row)
     
-    # Verificar que todos los rows tengan el mismo número de columnas
-    if parsed_rows:
-        max_columns = max(len(row) for row in parsed_rows)
-        min_columns = min(len(row) for row in parsed_rows)
+    for rec in records:
+        row_data = []
         
-        if max_columns != min_columns:
-            print(f"⚠️ Inconsistencia en columnas: min={min_columns}, max={max_columns}")
-            # Normalizar todas las filas al mismo número de columnas
-            for row in parsed_rows:
-                while len(row) < max_columns:
-                    row.append("")
+        # Caso 1: Si es una lista directamente (ya procesada)
+        if isinstance(rec, list):
+            row_data = [str(cell).strip().strip('"') for cell in rec]
         
-        # Ajustar headers si es necesario
-        actual_columns = max_columns if parsed_rows else 0
-        if len(headers) != actual_columns:
-            print(f"⚠️ Headers ({len(headers)}) != Columnas de datos ({actual_columns})")
-            if len(headers) < actual_columns:
-                # Agregar headers faltantes
-                for i in range(len(headers), actual_columns):
-                    headers.append(f"column_{i}")
+        # Caso 2: Si es una tupla del R-Tree (distancia, objeto)
+        elif isinstance(rec, tuple) and len(rec) == 2:
+            _, obj = rec  # obj es la fila original
+            if isinstance(obj, list):
+                row_data = [str(cell).strip().strip('"') for cell in obj]
             else:
-                # Recortar headers sobrantes
-                headers = headers[:actual_columns]
+                # Si obj es string, parsearlo como CSV
+                try:
+                    reader = csv.reader(io.StringIO(str(obj).strip()))
+                    row_data = next(reader, [])
+                except:
+                    row_data = [str(obj)]
+        
+        # Caso 3: Si es un string CSV (formato común del B+Tree)
+        elif isinstance(rec, str):
+            try:
+                # Manejo especial para strings con distancia
+                if ',distance=' in rec:
+                    # Separar la parte principal de la distancia
+                    parts = rec.rsplit(',distance=', 1)
+                    main_part = parts[0]
+                    distance = parts[1]
+                    
+                    # Parsear la parte principal como CSV
+                    reader = csv.reader(io.StringIO(main_part.strip()))
+                    row_data = next(reader, [])
+                    
+                    # Añadir la distancia al final
+                    row_data.append(distance)
+                else:
+                    # Parsear como CSV normal usando csv.reader para manejar comillas correctamente
+                    reader = csv.reader(io.StringIO(rec.strip()))
+                    row_data = next(reader, [])
+                
+            except Exception as e:
+                print(f"Error parseando CSV: {e}, usando fallback")
+                # Fallback: split por comas simple
+                if ',distance=' in rec:
+                    parts = rec.rsplit(',distance=', 1)
+                    main_part = parts[0]
+                    distance = parts[1]
+                    row_data = [cell.strip().strip('"') for cell in main_part.split(',')]
+                    row_data.append(distance)
+                else:
+                    row_data = [cell.strip().strip('"') for cell in rec.split(',')]
+        
+        # Caso 4: Cualquier otro tipo, convertir a string
+        else:
+            row_data = [str(rec)]
+        
+        # Limpiar datos de cada celda
+        cleaned_row = []
+        for cell in row_data:
+            cleaned_cell = str(cell).strip()
+            # Remover comillas extra si las hay
+            if cleaned_cell.startswith('"') and cleaned_cell.endswith('"'):
+                cleaned_cell = cleaned_cell[1:-1]
+            cleaned_row.append(cleaned_cell)
+        
+        parsed_rows.append(cleaned_row)
     
+    # Normalizar todas las filas al mismo número de columnas
+    if parsed_rows:
+        max_cols = max(len(r) for r in parsed_rows)
+        
+        # Completar filas cortas con strings vacíos
+        for r in parsed_rows:
+            while len(r) < max_cols:
+                r.append("")
+        
+        # Ajustar headers al mismo tamaño
+        adjusted_headers = headers.copy()
+        while len(adjusted_headers) < max_cols:
+            adjusted_headers.append(f"column_{len(adjusted_headers)}")
+        
+        # Si hay más headers que columnas, truncar
+        adjusted_headers = adjusted_headers[:max_cols]
+    else:
+        adjusted_headers = headers
+
+    print(f"📊 DEBUG parse_csv_records:")
+    print(f"   - Records originales: {len(records)}")
+    print(f"   - Parsed rows: {len(parsed_rows)}")
+    print(f"   - Headers ajustados: {adjusted_headers}")
+    print(f"   - Primera fila parseada: {parsed_rows[0] if parsed_rows else 'N/A'}")
+
     return {
-        "columns": headers,
+        "columns": adjusted_headers,
         "rows": parsed_rows,
         "count": len(parsed_rows)
     }
+
 
 # ========== ENDPOINTS (actualizados) ==========
 
@@ -270,41 +316,40 @@ async def get_table_headers(table_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/tables/{table_name}/scan", response_model=APIResponse)
 async def scan_table(table_name: str):
-    """
-    Obtener todos los registros de una tabla CON HEADERS dinámicos y formato CSV correcto
-    """
     try:
         if table_name not in engine.tables:
             raise HTTPException(status_code=404, detail=f"Tabla '{table_name}' no encontrada")
-        
-        # Obtener datos en formato CSV
+
         result = engine.scan(table_name)
-        records = result.split('\n') if result else []
-        
-        # Obtener headers dinámicamente del CSV original
         headers = engine.get_table_headers(table_name)
-        csv_path = engine.get_table_file_path(table_name)
-        
-        # Parsear los datos CSV correctamente
+
+        # Si result es lista de tuplas → R-Tree
+        if isinstance(result, list) and isinstance(result[0], tuple) and len(result[0]) == 2:
+            records = [row for _, row in result]  # Sacar solo el "objeto" o fila original
+        elif isinstance(result, str):
+            records = result.strip().split('\n')
+        else:
+            records = result  # fallback
+
         parsed_data = parse_csv_records(records, headers.copy())
-        
+
         return APIResponse(
             success=True,
-            message=f"Se encontraron {parsed_data['count']} registros con {len(parsed_data['columns'])} columnas",
+            message=f"Se encontraron {parsed_data['count']} registros",
             data={
-                "columns": parsed_data["columns"],     # ← FORMATO CORRECTO para frontend
-                "rows": parsed_data["rows"],           # ← FORMATO CORRECTO para frontend
+                "columns": parsed_data["columns"],
+                "rows": parsed_data["rows"],
                 "total_records": parsed_data["count"],
                 "table_name": table_name,
-                "csv_path": csv_path
             }
         )
-    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    
 @app.post("/records/search", response_model=APIResponse)
 async def search_records(request: SearchRequest):
     """
@@ -357,33 +402,33 @@ async def range_search_records(request: RangeSearchRequest):
 
 @app.post("/records/spatial-search", response_model=APIResponse)
 async def spatial_search_records(request: SpatialSearchRequest):
-    """
-    Buscar registros usando consultas espaciales (solo para R-Tree)
-    """
     try:
-        results = engine.range_search(request.table_name, request.point, request.param)
+        # El engine ya maneja todo el procesamiento interno del R-Tree
+        raw = engine.range_search(request.table_name, request.point, request.param)
         headers = engine.get_table_headers(request.table_name)
-        
-        # Para búsquedas espaciales, agregar columna de distancia si no existe
-        if headers and "distance" not in [h.lower() for h in headers]:
-            headers_with_distance = headers + ["distance"]
-        else:
-            headers_with_distance = headers
-            
-        parsed_data = parse_csv_records(results, headers_with_distance.copy())
-        
+
+        # Agregar distance al header si no existe (para R-Tree)
+        if "distance" not in [h.lower() for h in headers]:
+            headers = headers + ["distance"]
+
+        # raw ya viene como lista de strings CSV procesadas por el engine
+        # NO necesitamos desempaquetar tuplas aquí
+        parsed = parse_csv_records(raw, headers.copy())
+
         return APIResponse(
             success=True,
-            message=f"Se encontraron {parsed_data['count']} registros espaciales",
+            message=f"Se encontraron {parsed['count']} registros espaciales",
             data={
-                "columns": parsed_data["columns"],
-                "rows": parsed_data["rows"],
-                "count": parsed_data["count"]
+                "columns": parsed["columns"],
+                "rows": parsed["rows"],
+                "count": parsed["count"]
             }
         )
-    
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
 
 @app.delete("/records/delete", response_model=APIResponse)
 async def delete_records(request: DeleteRequest):
@@ -443,7 +488,8 @@ async def execute_sql(request: SQLQueryRequest):
                 # Es un mensaje de operación exitosa
                 parsed_data = {"columns": ["message"], "rows": [[result]], "count": 1}
         elif isinstance(result, list):
-            # Es una lista de registros CSV
+            # El engine ya procesó los datos correctamente
+            # NO necesitamos detectar ni desempaquetar tuplas R-Tree aquí
             parsed_data = parse_csv_records(result, headers.copy() if headers else ["column_1"])
         else:
             parsed_data = {"columns": ["result"], "rows": [[str(result)]], "count": 1}
@@ -452,8 +498,8 @@ async def execute_sql(request: SQLQueryRequest):
             success=True,
             message=f"Consulta ejecutada exitosamente",
             data={
-                "columns": parsed_data["columns"],    # ← FORMATO CORRECTO
-                "rows": parsed_data["rows"],          # ← FORMATO CORRECTO
+                "columns": parsed_data["columns"],    
+                "rows": parsed_data["rows"],          
                 "count": parsed_data["count"], 
                 "query": request.query,
                 "table_name": table_name,

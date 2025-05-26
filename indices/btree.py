@@ -54,6 +54,7 @@ class BPlusTree(BaseIndex):
         return str1 < str2, str1 == str2, str1 > str2
 
     def search(self, key):
+        """Devolver filas completas parseadas como arrays, no strings CSV"""
         key = self._parse_key(key)
         result = []
         
@@ -68,12 +69,16 @@ class BPlusTree(BaseIndex):
             for k, v in node.keys:
                 _, equals, _ = self._compare_keys(key, k)
                 if equals:
-                    result.append(f"{k} -> {v}")
+                    # CAMBIO CRÍTICO: Parsear el CSV string a array
+                    parsed_row = self._parse_csv_to_array(v)
+                    result.append(parsed_row)
             node = node.next
             
+        print(f"🔍 B+Tree search - devolviendo {len(result)} arrays")
         return result
 
     def range_search(self, start_key, end_key):
+        """Devolver filas completas parseadas como arrays"""
         start_key = self._parse_key(start_key)
         end_key = self._parse_key(end_key)
         
@@ -97,10 +102,14 @@ class BPlusTree(BaseIndex):
                 _, _, greater_than_end = self._compare_keys(k, end_key)
                 
                 if not less_than_start and not greater_than_end:  # start_key <= k <= end_key
-                    result.append(f"{k} -> {v}")
+                    # CAMBIO CRÍTICO: Parsear el CSV string a array
+                    parsed_row = self._parse_csv_to_array(v)
+                    result.append(parsed_row)
                 elif greater_than_end:  # k > end_key
                     return result
             node = node.next
+        
+        print(f"📊 B+Tree range_search - devolviendo {len(result)} arrays")
         return result
 
     def insert(self, _, values):
@@ -110,9 +119,17 @@ class BPlusTree(BaseIndex):
         
         key = self._parse_key(values[self.field_index])
         
-        # Crear el valor excluyendo la columna indexada - versión más simple
-        value_parts = values[:self.field_index] + values[self.field_index+1:]
-        value = ' | '.join(str(v) for v in value_parts)
+        # CAMBIO: Guardar la fila COMPLETA como value en formato CSV
+        # En lugar de excluir la columna indexada
+        cleaned_values = []
+        for v in values:
+            cleaned = str(v).strip()
+            # Escapar comillas y comas para CSV
+            if ',' in cleaned or '"' in cleaned or '\n' in cleaned:
+                cleaned = f'"{cleaned.replace('"', '""')}"'
+            cleaned_values.append(cleaned)
+        
+        value = ','.join(cleaned_values)  # Fila completa en CSV
         
         root = self.root
         if len(root.keys) == ORDER - 1:
@@ -177,46 +194,52 @@ class BPlusTree(BaseIndex):
         parent.children.insert(i+1, right)
 
     def remove(self, key):
-        """Elimina todos los registros con la clave especificada de todas las hojas."""
+        """Eliminar registros y devolver filas eliminadas en CSV"""
         key = self._parse_key(key)
-        total_removed = 0
+        removed_records = []
         
-        # Ir a la primera hoja (más a la izquierda)
+        # Ir a la primera hoja
         node = self.root
         while not node.is_leaf:
             node = node.children[0]
         
-        # Recorrer todas las hojas usando los enlaces next
+        # Recorrer todas las hojas
         while node:
-            # Contar cuántos registros había antes
             original_count = len(node.keys)
             
-            # Filtrar las claves que NO coinciden (mantener las que son diferentes)
+            # Guardar los registros que van a ser eliminados
+            for k, v in node.keys:
+                _, equals, _ = self._compare_keys(key, k)
+                if equals:
+                    removed_records.append(v)  # Fila CSV completa
+            
+            # Filtrar las claves que NO coinciden
             node.keys = [(k, v) for (k, v) in node.keys 
-                         if not self._compare_keys(key, k)[1]]  # No son iguales
+                        if not self._compare_keys(key, k)[1]]
             
-            # Contar cuántos se eliminaron de esta hoja
-            removed_from_this_node = original_count - len(node.keys)
-            total_removed += removed_from_this_node
-            
-            # Ir a la siguiente hoja
             node = node.next
         
         # Guardar los cambios
         self._save()
-        return [f"Se eliminaron {total_removed} registros con clave '{key}'"]
+        return removed_records  # Lista de filas CSV eliminadas
 
     def scan_all(self):
+        """Devolver todas las filas parseadas como arrays"""
         node = self.root
         while not node.is_leaf:
             node = node.children[0]
+        
         result = []
         while node:
             for k, v in node.keys:
-                result.append(f"{k} -> {v}")
+                # CAMBIO CRÍTICO: Parsear el CSV string a array
+                parsed_row = self._parse_csv_to_array(v)
+                result.append(parsed_row)
             node = node.next
+        
+        print(f"🌳 B+Tree scan_all - devolviendo {len(result)} arrays")
         return result
-
+    
     def load_csv(self, path_or_data, index_col: Optional[int] = None):
         """Carga un CSV usando la columna especificada como índice."""
         import csv
@@ -248,3 +271,20 @@ class BPlusTree(BaseIndex):
                 
                 if len(row) > index_col:
                     self.insert(None, row)
+
+    def _parse_csv_to_array(self, csv_string):
+        """Convierte un string CSV a un array de valores"""
+        import csv
+        import io
+        
+        try:
+            # Usar csv.reader para parsear correctamente
+            reader = csv.reader(io.StringIO(csv_string.strip()))
+            row = next(reader, [])
+            # Limpiar cada valor
+            cleaned_row = [str(cell).strip().strip('"') for cell in row]
+            return cleaned_row
+        except Exception as e:
+            print(f"Error parseando CSV: {e}")
+            # Fallback: split simple
+            return [cell.strip().strip('"') for cell in csv_string.split(',')]

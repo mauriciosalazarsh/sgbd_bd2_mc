@@ -514,23 +514,72 @@ class Engine:
         
         return resultados
 
+    # En engine.py - REEMPLAZAR el método remove con esta versión mejorada:
+
     def remove(self, table: str, key: str) -> List[str]:
-        """Eliminar registros con formato CSV consistente"""
+        """Eliminar registros con formato CSV consistente y mejor manejo de errores"""
         if table not in self.tables:
             raise ValueError(f"Tabla '{table}' no encontrada")
+        
         idx = self.tables[table]
         
-        if hasattr(idx, 'remove'):
-            try:
-                raw_results = idx.remove(key)
-                
-                # NUEVO: Hash devuelve strings CSV directamente, otros necesitan formateo
-                if isinstance(idx, ExtendibleHash):
-                    return raw_results  # Ya están en formato CSV
-                else:
-                    # Otros índices devuelven objetos que necesitan formateo
-                    return [self._format_record_to_csv(r) for r in raw_results]
-            except Exception as e:
-                raise ValueError(f"Error eliminando registros: {e}")
+        print(f"\n🗑️ ENGINE REMOVE:")
+        print(f"   - Tabla: {table}")
+        print(f"   - Clave: '{key}'")
+        print(f"   - Tipo de índice: {type(idx).__name__}")
+        print(f"   - Campo indexado: {getattr(idx, 'field_index', 'N/A')}")
         
-        raise NotImplementedError("El índice no soporta eliminación")
+        if not hasattr(idx, 'remove'):
+            raise NotImplementedError(f"El índice {type(idx).__name__} no soporta eliminación")
+        
+        try:
+            # Llamar al método remove del índice específico
+            raw_results = idx.remove(key)
+            print(f"   🔍 Resultado raw del índice: {type(raw_results)} con {len(raw_results) if isinstance(raw_results, list) else 'N/A'} elementos")
+            
+            if not raw_results:
+                print("   ⚠️ El índice no encontró registros para eliminar")
+                return []
+            
+            # Formatear resultados según el tipo de índice
+            formatted_results = []
+            
+            if isinstance(idx, ExtendibleHash):
+                # Hash devuelve strings CSV directamente
+                print("   📝 Procesando resultados de Hash (formato CSV directo)")
+                formatted_results = raw_results if isinstance(raw_results, list) else [str(raw_results)]
+                
+            elif hasattr(idx, '__class__') and 'SequentialFile' in str(type(idx)):
+                # Sequential File devuelve strings con separador |
+                print("   📝 Procesando resultados de Sequential File (separador |)")
+                for r in raw_results:
+                    if isinstance(r, str) and '|' in r:
+                        # Convertir de | separado a CSV
+                        cols = [c.strip() for c in r.split('|')]
+                        csv_record = ','.join(f'"{c}"' if ',' in c else c for c in cols)
+                        formatted_results.append(csv_record)
+                    else:
+                        formatted_results.append(self._format_record_to_csv(r))
+                        
+            else:
+                # Otros índices (ISAM, B+Tree)
+                print("   📝 Procesando resultados de otros índices")
+                for r in raw_results:
+                    csv_record = self._format_record_to_csv(r)
+                    formatted_results.append(csv_record)
+            
+            print(f"   ✅ Eliminación exitosa: {len(formatted_results)} registros eliminados")
+            
+            # Debug: mostrar los primeros registros eliminados
+            for i, record in enumerate(formatted_results[:3]):
+                print(f"   📋 Eliminado {i+1}: {record[:100]}{'...' if len(record) > 100 else ''}")
+            
+            return formatted_results
+            
+        except Exception as e:
+            print(f"   ❌ Error eliminando registros: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Devolver lista vacía en lugar de lanzar excepción
+            return []

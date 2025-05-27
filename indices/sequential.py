@@ -258,30 +258,101 @@ class SequentialFile(BaseIndex):
                 results.append(row)
         return results
 
+    # En indices/sequential.py - REEMPLAZAR el método remove con esta versión mejorada:
+
     def remove(self, key: str) -> List[str]:
+        """Eliminar registros por clave del campo indexado - VERSIÓN MEJORADA"""
         removed: List[str] = []
-        prev, cur = None, self._read_header(self.data_file)
+        
+        print(f"\n🗑️ SEQUENTIAL REMOVE:")
+        print(f"   - Clave a eliminar: '{key}'")
+        print(f"   - Campo indexado: {self.field_index}")
+        
+        # Obtener estado inicial
+        initial_head = self._read_header(self.data_file)
+        total_data = self._count_records(self.data_file)
+        total_aux = self._count_records(self.aux_file)
+        
+        print(f"   - Head inicial: {initial_head}")
+        print(f"   - Registros en data: {total_data}")
+        print(f"   - Registros en aux: {total_aux}")
+        
+        if initial_head == -1:
+            print("   ⚠️ Tabla vacía, no hay nada que eliminar")
+            return removed
+        
+        # Recorrer la lista enlazada buscando registros a eliminar
+        prev, cur = None, initial_head
+        eliminated_count = 0
+        
         while cur != -1:
-            is_data = cur < self._count_records(self.data_file)
-            path = self.data_file if is_data else self.aux_file
-            idx = cur if is_data else cur - self._count_records(self.data_file)
-            rec = self._read_record(path, idx)
-            if rec.campos[self.field_index] == key:
-                removed.append(str(rec))
-                # desenlaza
-                if prev is None:
-                    self._write_header(self.data_file, rec.next_pos)
+            try:
+                # Determinar archivo y posición
+                count_data = self._count_records(self.data_file)
+                is_data = cur < count_data
+                path = self.data_file if is_data else self.aux_file
+                idx = cur if is_data else cur - count_data
+                
+                print(f"   🔍 Examinando posición {cur} ({'data' if is_data else 'aux'}[{idx}])")
+                
+                # Leer registro
+                rec = self._read_record(path, idx)
+                record_key = rec.campos[self.field_index].strip()
+                
+                print(f"      - Valor en campo indexado: '{record_key}'")
+                print(f"      - ¿Coincide con '{key}'? {record_key == key}")
+                
+                if record_key == key.strip():
+                    # ¡ENCONTRADO! Eliminar este registro
+                    print(f"   ✅ ELIMINANDO registro: {str(rec)}")
+                    removed.append(str(rec))
+                    eliminated_count += 1
+                    
+                    # Desenlazar el nodo
+                    next_pos = rec.next_pos
+                    
+                    if prev is None:
+                        # El registro a eliminar es el head
+                        print(f"      - Actualizando head de {cur} a {next_pos}")
+                        self._write_header(self.data_file, next_pos)
+                    else:
+                        # Actualizar el next_pos del nodo anterior
+                        print(f"      - Actualizando next_pos de posición {prev} a {next_pos}")
+                        
+                        # Leer el nodo anterior
+                        prev_count_data = self._count_records(self.data_file)
+                        prev_is_data = prev < prev_count_data
+                        prev_path = self.data_file if prev_is_data else self.aux_file
+                        prev_idx = prev if prev_is_data else prev - prev_count_data
+                        
+                        prev_rec = self._read_record(prev_path, prev_idx)
+                        prev_rec.next_pos = next_pos
+                        
+                        # Escribir el nodo anterior actualizado
+                        with open(prev_path, 'r+b') as f:
+                            f.seek(HEADER_SIZE + prev_idx * self._record_size())
+                            f.write(prev_rec.pack(self.format))
+                    
+                    # Continuar desde la siguiente posición (sin actualizar prev)
+                    cur = next_pos
+                    
+                    # Si queremos eliminar solo el primer match, podemos break aquí
+                    # break  # Comentado para eliminar TODOS los matches
+                    
                 else:
-                    prev_is = prev < self._count_records(self.data_file)
-                    ppath = self.data_file if prev_is else self.aux_file
-                    pidx = prev if prev_is else prev - self._count_records(self.data_file)
-                    prec = self._read_record(ppath, pidx)
-                    prec.next_pos = rec.next_pos
-                    with open(ppath, 'r+b') as f:
-                        f.seek(HEADER_SIZE + pidx * self._record_size())
-                        f.write(prec.pack(self.format))
+                    # No coincide, continuar
+                    prev, cur = cur, rec.next_pos
+                    
+            except Exception as e:
+                print(f"   ❌ Error procesando posición {cur}: {e}")
                 break
-            prev, cur = cur, rec.next_pos
+        
+        print(f"   📊 RESULTADO: {eliminated_count} registros eliminados")
+        
+        # Verificar estado final
+        final_head = self._read_header(self.data_file)
+        print(f"   - Head final: {final_head}")
+        
         return removed
 
     def rebuild(self) -> None:

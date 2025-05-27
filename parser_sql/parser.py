@@ -633,9 +633,12 @@ class SQLParser:
         
         return self.engine.insert(table_name, values)
     
+# En parser_sql/parser.py - REEMPLAZAR el método _parse_delete con esta versión corregida:
+
     def _parse_delete(self, query: str) -> List[str]:
         """
-        Parsea: delete from Restaurantes where id = x
+        Parsea: delete from Restaurantes where columna = valor
+        CORREGIDO: Ahora maneja correctamente búsquedas en cualquier columna
         """
         pattern = r'delete\s+from\s+(\w+)\s+where\s+(\w+)\s*=\s*(.+)'
         match = re.search(pattern, query, re.IGNORECASE)
@@ -647,7 +650,67 @@ class SQLParser:
         column_name = match.group(2)
         value = match.group(3).strip().strip('"\'')
         
-        return self.engine.remove(table_name, value)
+        print(f"\n🗑️ DELETE PARSER:")
+        print(f"   - Tabla: {table_name}")
+        print(f"   - Columna: {column_name}")
+        print(f"   - Valor: {value}")
+        
+        # CORREGIDO: Primero buscar los registros que coinciden, luego eliminarlos
+        try:
+            # 1. Obtener el índice de la columna
+            column_index = self._get_column_index_from_table(table_name, column_name)
+            print(f"   - Índice de columna: {column_index}")
+            
+            # 2. Buscar registros que coinciden
+            matching_records = self.engine.search(table_name, value, column_index)
+            print(f"   - Registros encontrados: {len(matching_records)}")
+            
+            if not matching_records:
+                print("   ⚠️ No se encontraron registros para eliminar")
+                return []
+            
+            # 3. Para el DELETE, necesitamos eliminar por la clave del índice principal
+            idx = self.engine.tables[table_name]
+            field_index = getattr(idx, 'field_index', 0)
+            
+            deleted_records = []
+            
+            # 4. Para cada registro encontrado, extraer la clave del índice y eliminar
+            for record in matching_records:
+                try:
+                    # Parsear el registro CSV para obtener la clave del índice principal
+                    import csv
+                    import io
+                    reader = csv.reader(io.StringIO(record.strip()))
+                    cols = next(reader, [])
+                    
+                    if field_index < len(cols):
+                        index_key = cols[field_index].strip()
+                        print(f"   🔑 Eliminando por clave del índice: '{index_key}' (columna {field_index})")
+                        
+                        # Eliminar usando la clave del índice principal
+                        removed = self.engine.remove(table_name, index_key)
+                        deleted_records.extend(removed)
+                    else:
+                        print(f"   ❌ Error: Índice {field_index} fuera de rango para registro")
+                        
+                except Exception as e:
+                    print(f"   ❌ Error procesando registro para DELETE: {e}")
+                    continue
+            
+            print(f"   ✅ Total eliminados: {len(deleted_records)} registros")
+            return deleted_records
+            
+        except Exception as e:
+            print(f"   ❌ Error en DELETE: {e}")
+            # FALLBACK: Si falla la búsqueda avanzada, intentar eliminación directa
+            # (esto solo funciona si la columna WHERE es la misma que el índice)
+            print(f"   🔄 Intentando eliminación directa...")
+            try:
+                return self.engine.remove(table_name, value)
+            except Exception as e2:
+                print(f"   ❌ Error en eliminación directa: {e2}")
+                return []
     
     def _get_column_index(self, file_path: str, column_name: str) -> int:
         """

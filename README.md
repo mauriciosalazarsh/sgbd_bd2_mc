@@ -280,12 +280,4 @@ chmod -R 755 indices/
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abrir un Pull Request
 
-## Licencia
 
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
-
-## Contacto
-
-Tu Nombre - [@tu_usuario](https://twitter.com/tu_usuario) - email@ejemplo.com
-
-Link del Proyecto: [https://github.com/tu-usuario/sistema-bd-multimodal](https://github.com/tu-usuario/sistema-bd-multimodal)

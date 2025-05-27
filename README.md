@@ -1,4 +1,3 @@
-
 # Sistema de Base de Datos Multimodal
 
 [![Python](https://img.shields.io/badge/python-v3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -47,16 +46,13 @@ cd sistema-bd-multimodal
 
 ### 2. Configurar Backend
 ```bash
-# Crear entorno virtual
 python -m venv venv
-
 # Activar entorno virtual
 # Windows:
 venv\Scripts\activate
 # Linux/macOS:
 source venv/bin/activate
 
-# Instalar dependencias
 pip install -r requirements.txt
 ```
 
@@ -79,17 +75,15 @@ mkdir indices/buckets
 
 ### Opción 1: Ejecutar Solo Backend (API)
 ```bash
-# Desde la raíz del proyecto
 python main.py api
-
-# O directamente:
+# o directamente:
 python -m uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-La API estará disponible en:
-- **URL**: http://localhost:8000
-- **Documentación**: http://localhost:8000/docs
-- **Redoc**: http://localhost:8000/redoc
+API disponible en:
+- http://localhost:8000
+- http://localhost:8000/docs
+- http://localhost:8000/redoc
 
 ### Opción 2: Ejecutar Solo Frontend
 ```bash
@@ -99,24 +93,20 @@ npm run dev
 yarn dev
 ```
 
-El frontend estará disponible en: http://localhost:3000
+Frontend en: http://localhost:3000
 
 ### Opción 3: Sistema Completo (Recomendado)
 ```bash
-# Terminal 1 - Backend
+# Terminal 1
 python main.py api
-
-# Terminal 2 - Frontend
+# Terminal 2
 cd frontend
 npm run dev
 ```
 
-### Opción 4: Modo Interactivo (Sin Frontend)
+### Opción 4: Modo Interactivo (Demo o SQL directo)
 ```bash
-# Modo demo con consultas de ejemplo
 python main.py demo
-
-# Modo interactivo SQL
 python main.py interactive
 ```
 
@@ -124,54 +114,54 @@ python main.py interactive
 
 ```
 sistema-bd-multimodal/
-├── api.py                    # API FastAPI principal
-├── engine.py                 # Motor de base de datos
-├── main.py                   # Punto de entrada
-├── requirements.txt          # Dependencias Python
-├── indices/                  # Implementaciones de índices
-│   ├── base_index.py        # Clase base
-│   ├── sequential.py        # Sequential File
-│   ├── isam.py             # ISAM
-│   ├── hash_extensible.py  # Hash Extensible
-│   ├── btree.py            # B+ Tree
-│   └── rtree.py            # R-Tree
-├── parser_sql/              # Parser SQL personalizado
-│   └── parser.py           # Lógica de parsing
-├── frontend/               # Aplicación React/Next.js
+├── api.py
+├── engine.py
+├── main.py
+├── requirements.txt
+├── indices/
+│   ├── base_index.py
+│   ├── sequential.py
+│   ├── isam.py
+│   ├── hash_extensible.py
+│   ├── btree.py
+│   └── rtree.py
+├── parser_sql/
+│   └── parser.py
+├── frontend/
 │   ├── src/
-│   │   ├── app/           # Páginas Next.js
-│   │   ├── components/    # Componentes React
-│   │   └── lib/          # API cliente y utilidades
+│   │   ├── app/
+│   │   ├── components/
+│   │   └── lib/
 │   ├── package.json
 │   └── tailwind.config.js
-└── datos/                 # Archivos CSV (crear manualmente)
+└── datos/
 ```
 
 ## API Endpoints
 
 ### Tablas
-- `GET /tables` - Listar todas las tablas
-- `POST /tables/create` - Crear nueva tabla
-- `POST /tables/upload-csv` - Subir archivo CSV
-- `GET /tables/{table_name}/scan` - Escanear tabla completa
-- `GET /tables/{table_name}/headers` - Obtener columnas
+- `GET /tables`
+- `POST /tables/create`
+- `POST /tables/upload-csv`
+- `GET /tables/{table_name}/scan`
+- `GET /tables/{table_name}/headers`
 
 ### Registros
-- `POST /records/insert` - Insertar registro
-- `POST /records/search` - Búsqueda exacta
-- `POST /records/range-search` - Búsqueda por rango
-- `POST /records/spatial-search` - Búsqueda espacial
-- `DELETE /records/delete` - Eliminar registros
+- `POST /records/insert`
+- `POST /records/search`
+- `POST /records/range-search`
+- `POST /records/spatial-search`
+- `DELETE /records/delete`
 
 ### SQL
-- `POST /sql/execute` - Ejecutar consulta SQL
+- `POST /sql/execute`
 
 ### Utilidades
-- `GET /health` - Estado del sistema
+- `GET /health`
 
 ## Ejemplos de Uso
 
-### 1. Crear Tabla con API
+### Crear Tabla (API)
 ```bash
 curl -X POST "http://localhost:8000/tables/create" \
 -H "Content-Type: application/json" \
@@ -183,7 +173,7 @@ curl -X POST "http://localhost:8000/tables/create" \
 }'
 ```
 
-### 2. Consulta SQL
+### Consulta SQL (API)
 ```bash
 curl -X POST "http://localhost:8000/sql/execute" \
 -H "Content-Type: application/json" \
@@ -192,7 +182,7 @@ curl -X POST "http://localhost:8000/sql/execute" \
 }'
 ```
 
-### 3. Búsqueda Espacial (R-Tree)
+### Búsqueda Espacial (API)
 ```bash
 curl -X POST "http://localhost:8000/records/spatial-search" \
 -H "Content-Type: application/json" \
@@ -203,81 +193,96 @@ curl -X POST "http://localhost:8000/records/spatial-search" \
 }'
 ```
 
+## Consultas SQL por Tipo de Índice
+
+### 🔹 SEQUENTIAL
+```sql
+CREATE TABLE students_seq FROM FILE "datos/StudentsPerformance.csv" USING INDEX sequential("5");
+INSERT INTO students_seq GENERATE_DATA(100);
+SELECT * FROM students_seq WHERE math_score = 70;
+SELECT * FROM students_seq WHERE math_score BETWEEN 70 AND 90;
+DELETE FROM students_seq WHERE math_score = 70;
+```
+
+### 🔹 ISAM
+```sql
+CREATE TABLE students_isam FROM FILE "datos/StudentsPerformance.csv" USING INDEX isam("5");
+INSERT INTO students_isam GENERATE_DATA(100);
+SELECT * FROM students_isam WHERE math_score = 70;
+SELECT * FROM students_isam WHERE math_score BETWEEN 70 AND 90;
+DELETE FROM students_isam WHERE math_score = 70;
+```
+
+### 🔹 B+ TREE
+```sql
+CREATE TABLE students_btree FROM FILE "datos/StudentsPerformance.csv" USING INDEX btree("5");
+INSERT INTO students_btree GENERATE_DATA(100);
+SELECT * FROM students_btree WHERE math_score = 70;
+SELECT * FROM students_btree WHERE math_score BETWEEN 70 AND 90;
+DELETE FROM students_btree WHERE math_score = 70;
+```
+
+### 🔹 HASH EXTENSIBLE
+```sql
+CREATE TABLE students_hash FROM FILE "datos/StudentsPerformance.csv" USING INDEX hash("5");
+INSERT INTO students_hash GENERATE_DATA(100);
+SELECT * FROM students_hash WHERE math_score = 70;
+-- ❌ NO SOPORTA búsqueda por rango
+DELETE FROM students_hash WHERE math_score = 70;
+```
+
+### 🔹 R-TREE
+```sql
+CREATE TABLE houses_rtree FROM FILE "datos/kcdatahouse.csv" USING INDEX rtree("lat");
+INSERT INTO houses_rtree GENERATE_DATA(100);
+SELECT * FROM houses_rtree WHERE lat IN ("47.6, -122.3", 10);
+SELECT * FROM houses_rtree WHERE lat IN ("47.6, -122.3", 5.0);
+```
+
 ## Tipos de Índices Soportados
 
-| Índice | Descripción | Casos de Uso |
-|--------|-------------|-------------|
-| **Sequential** | Archivo secuencial ordenado | Consultas simples, inserciones ocasionales |
-| **ISAM** | Indexed Sequential Access Method | Consultas frecuentes, actualizaciones moderadas |
-| **Hash** | Hash Extensible | Búsquedas exactas muy rápidas |
-| **B+ Tree** | Árbol B+ balanceado | Consultas por rango, alta concurrencia |
-| **R-Tree** | Índice espacial | Datos geográficos, búsquedas por proximidad |
-
-## Configuración Avanzada
-
-### Variables de Entorno (Opcional)
-```bash
-# .env
-NEXT_PUBLIC_API_URL=http://localhost:8000
-PYTHONPATH=.
-```
-
-### Configuración de Índices
-```python
-# Personalizar parámetros en engine.py
-BUCKET_CAPACITY = 32        # Hash Extensible
-ORDER = 4                   # B+ Tree
-MAX_AUX = 10               # Sequential File
-```
+| Índice         | Descripción                        | Casos de Uso                        |
+|----------------|------------------------------------|-------------------------------------|
+| Sequential     | Archivo secuencial ordenado        | Consultas simples, inserciones bajas|
+| ISAM           | Índice secuencial con acceso mixto | Lectura rápida y actualizaciones    |
+| Hash Extensible| Hash dinámico en disco            | Búsqueda exacta muy rápida          |
+| B+ Tree        | Árbol balanceado con ordenamiento | Consultas por rango, escalabilidad  |
+| R-Tree         | Índice espacial                    | Datos geográficos y proximidad      |
 
 ## Solución de Problemas
 
 ### Error: R-Tree no disponible
 ```bash
-# Instalar dependencias espaciales
 pip install rtree
-
-# Si persiste el error:
-# Windows: Instalar Visual C++ Build Tools
+# Windows: instalar Visual C++ Build Tools
 # Linux: sudo apt-get install libspatialindex-dev
 # macOS: brew install spatialindex
 ```
 
-### Error: Puerto 8000 en uso
+### Puerto 8000 ocupado
 ```bash
-# Cambiar puerto
 python -m uvicorn api:app --port 8001
-
-# O terminar proceso
+# o terminar proceso:
 # Windows: netstat -ano | findstr :8000
 # Linux/macOS: lsof -ti:8000 | xargs kill
 ```
 
 ### Frontend no conecta con Backend
 ```bash
-# Verificar que el backend esté corriendo
 curl http://localhost:8000/health
-
-# Verificar variable de entorno
 echo $NEXT_PUBLIC_API_URL
 ```
 
-### Error de permisos en archivos
+### Permisos en archivos
 ```bash
-# Dar permisos a directorios
 chmod -R 755 datos/
 chmod -R 755 indices/
 ```
 
-
-*Búsquedas espaciales con distancia Haversine
-
 ## Contribuir
 
-1. Fork el proyecto
-2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir un Pull Request
-
-
+1. Fork del repositorio  
+2. Crea una rama (`git checkout -b feature/NuevaFeature`)  
+3. Haz commit (`git commit -m 'Add NuevaFeature'`)  
+4. Push (`git push origin feature/NuevaFeature`)  
+5. Abre un Pull Request

@@ -269,14 +269,6 @@ chmod -R 755 datos/
 chmod -R 755 indices/
 ```
 
-## Rendimiento
-
-### Benchmarks (10,000 registros)
-| Operación | Sequential | ISAM | Hash | B+Tree | R-Tree |
-|-----------|------------|------|------|--------|--------|
-| Insert | 45ms | 12ms | 8ms | 10ms | 35ms |
-| Search | 120ms | 15ms | 3ms | 8ms | 25ms* |
-| Range | 150ms | 25ms | N/A | 12ms | 40ms* |
 
 *Búsquedas espaciales con distancia Haversine
 

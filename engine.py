@@ -1,8 +1,9 @@
-# engine.py - CORREGIDO para solucionar errores de tipos y compatibilidad con ISAM
+# engine.py - CORREGIDO para soporte de índices textuales SPIMI
 
 import csv
 import os
-from typing import List, Any, Tuple, Dict, Union
+import pickle
+from typing import List, Any, Tuple, Dict, Union, Optional
 from indices.sequential import SequentialFile
 from indices.isam import ISAM
 from indices.hash_extensible import ExtendibleHash
@@ -23,26 +24,171 @@ class Engine:
         self.tables: Dict[str, BaseIndex] = {}
         self.table_headers: Dict[str, List[str]] = {}      
         self.table_file_paths: Dict[str, str] = {}
-        self.table_schemas: Dict[str, List[tuple]] = {}  # NUEVO: Guardar schemas para ISAM
+        self.table_schemas: Dict[str, List[tuple]] = {}
+        
+        # NUEVO: Soporte para índices textuales
+        self.text_tables: Dict[str, Dict[str, Any]] = {}  # tabla -> {index_path, text_fields, csv_path}
 
-    def _init_index(self, tipo: str, table: str, index_field: int, schema: Any) -> BaseIndex:
+    def register_text_table(self, table_name: str, index_path: str, text_fields: List[str], csv_path: str):
+        """Registra una tabla con índice textual SPIMI"""
+        self.text_tables[table_name] = {
+            'index_path': index_path,
+            'text_fields': text_fields,
+            'csv_path': csv_path,
+            'type': 'SPIMI'
+        }
+        
+        # También leer headers del CSV
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                headers = next(reader, [])
+                self.table_headers[table_name] = headers
+                self.table_file_paths[table_name] = csv_path
+                
+            print(f"📝 Tabla textual '{table_name}' registrada exitosamente")
+            print(f"   📁 CSV: {csv_path}")
+            print(f"   💾 Índice: {index_path}")
+            print(f"   📋 Campos textuales: {text_fields}")
+            print(f"   📊 Headers: {len(headers)} columnas")
+            
+        except Exception as e:
+            print(f"⚠️ Error leyendo headers para tabla {table_name}: {e}")
+
+    def textual_search(self, table_name: str, query_text: str, k: int = 10) -> List[Tuple[Dict[str, Any], float]]:
+        """
+        Ejecuta búsqueda textual usando el índice SPIMI
+        """
+        print(f"🔍 Búsqueda textual en tabla '{table_name}'")
+        print(f"📝 Consulta: '{query_text}'")
+        print(f"📊 Top-K: {k}")
+        
+        # Verificar si es tabla textual
+        if table_name not in self.text_tables:
+            raise ValueError(f"Tabla '{table_name}' no tiene índice textual")
+        
+        text_info = self.text_tables[table_name]
+        index_path = text_info['index_path']
+        csv_path = text_info['csv_path']
+        
+        try:
+            # Importar módulos necesarios
+            from indices.spimi import SPIMIIndexBuilder
+            from indices.inverted_index import InvertedIndex
+            
+            # Cargar el índice SPIMI construido
+            if not os.path.exists(index_path):
+                raise ValueError(f"Archivo de índice no encontrado: {index_path}")
+            
+            print(f"📂 Cargando índice desde: {index_path}")
+            
+            # Cargar datos del índice
+            with open(index_path, 'rb') as f:
+                index_data = pickle.load(f)
+            
+            print(f"📋 Índice cargado: {len(index_data.get('index', {}))} términos")
+            
+            # Cargar documentos originales para los resultados
+            documents = []
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    documents.append(row)
+            
+            print(f"📄 Documentos cargados: {len(documents)}")
+            
+            # Procesar consulta usando componentes de InvertedIndex
+            # Crear un índice temporal para ejecutar la búsqueda
+            temp_index = InvertedIndex(table_name, text_info['text_fields'], 'spanish')
+            
+            # Cargar la información del índice SPIMI
+            temp_index.inverted_index = index_data.get('index', {})
+            temp_index.total_documents = index_data.get('total_documents', len(documents))
+            temp_index.document_metadata = {i: doc for i, doc in enumerate(documents)}
+            
+            # OPTIMIZACIÓN: Cargar normas precalculadas si existen
+            if 'document_norms' in index_data:
+                print("📊 Cargando normas precalculadas...")
+                temp_index.tfidf_calculator.document_norms = index_data['document_norms']
+                temp_index.tfidf_calculator.document_count = temp_index.total_documents
+                temp_index.tfidf_calculator.vocabulary = set(temp_index.inverted_index.keys())
+                
+                # Cargar document frequencies
+                temp_index.tfidf_calculator.document_frequencies = index_data.get('document_frequencies', {})
+                
+                print(f"✅ Configuración TF-IDF cargada desde índice")
+            else:
+                print("⚠️ Normas no encontradas en índice, calculando...")
+                # Fallback al método optimizado anterior
+                self._calculate_document_norms_optimized(temp_index)
+            
+            # Ejecutar búsqueda
+            results = temp_index.search(query_text, k)
+            
+            print(f"✅ Búsqueda completada: {len(results)} resultados encontrados")
+            
+            return results
+            
+        except Exception as e:
+            print(f"❌ Error en búsqueda textual: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    def _calculate_document_norms_optimized(self, temp_index):
+        """Calcula normas de documentos de manera optimizada"""
+        print("📊 Calculando normas de documentos (método optimizado)...")
+        
+        # Configurar TF-IDF calculator básico
+        temp_index.tfidf_calculator.document_count = temp_index.total_documents
+        temp_index.tfidf_calculator.vocabulary = set(temp_index.inverted_index.keys())
+        
+        # Reconstruir document frequencies
+        for term, postings in temp_index.inverted_index.items():
+            temp_index.tfidf_calculator.document_frequencies[term] = len(postings)
+        
+        # Inicializar normas
+        temp_index.tfidf_calculator.document_norms = {}
+        doc_vectors = {}  # doc_id -> {term: weight}
+        
+        # Una sola pasada por el índice invertido
+        for term, postings in temp_index.inverted_index.items():
+            for post_doc_id, weight in postings:
+                if post_doc_id not in doc_vectors:
+                    doc_vectors[post_doc_id] = {}
+                doc_vectors[post_doc_id][term] = weight
+        
+        # Calcular normas
+        import math
+        for doc_id in range(temp_index.total_documents):
+            if doc_id in doc_vectors:
+                vector = doc_vectors[doc_id]
+                norm = math.sqrt(sum(weight ** 2 for weight in vector.values()))
+                temp_index.tfidf_calculator.document_norms[doc_id] = norm
+            else:
+                temp_index.tfidf_calculator.document_norms[doc_id] = 0.0
+        
+        print(f"✅ Normas calculadas para {len(temp_index.tfidf_calculator.document_norms)} documentos")
+
+    def _init_index(self, tipo: str, table: str, index_field: int, schema: Optional[List[Tuple[str, str, int]]]) -> BaseIndex:
         """Inicializa un índice según su tipo"""
         if tipo == 'sequential':
             return SequentialFile(f'{table}_data.bin',
                                 f'{table}_aux.bin',
                                 field_index=index_field)
         elif tipo == 'isam':
+            if schema is None:
+                raise ValueError("ISAM requiere un schema válido")
             return ISAM(f'{table}_data.bin',
                         f'{table}_index.bin',
                         schema,
                         index_field)
         elif tipo == 'hash':
-            # CORREGIDO: Hash Extensible con configuración apropiada
             hash_idx = ExtendibleHash(
                 dir_file=f'indices/{table}_hash_dir.pkl',
                 data_file=f'indices/{table}_hash_data.bin'
             )
-            hash_idx.field_index = index_field  # Configurar campo indexado
+            hash_idx.field_index = index_field
             return hash_idx
         elif tipo == 'bplustree':
             tree = BPlusTree(f'{table}_btree.pkl')
@@ -85,70 +231,78 @@ class Engine:
                 raise ValueError("R-Tree no está disponible")
             
             idx = MultidimensionalRTree(path=f'{table}_rtree', dimension=2)
-            idx.load_csv(path)  # Pasar string path, no lista
-            
+            idx.load_csv(path)  # MultidimensionalRTree.load_csv acepta str
+
         elif tipo == 'isam':
-            # ISAM con esquema - CORREGIDO
+            # ISAM requiere un manejo especial con diccionarios
             with open(path, newline='', encoding='latin1') as f:
                 reader = csv.reader(f)
                 headers_isam = next(reader)
                 rows = list(reader)
 
+            # Crear schema ANTES de inicializar el índice
             schema = [(f'col{i}', '20s', 20) for i in range(len(headers_isam))]
-            self.table_schemas[table] = schema  # NUEVO: Guardar schema
+            self.table_schemas[table] = schema
             
+            # Convertir filas a diccionarios para ISAM
             data_dicts = [dict(zip([f'col{i}' for i in range(len(row))], row)) for row in rows]
             
+            # Ahora schema es definitivamente no-None
             idx = self._init_index(tipo, table, index_field, schema)
-            # Para ISAM, pasar los diccionarios, no el path
-            if hasattr(idx, 'load_csv'):
-                idx.load_csv(data_dicts)  # type: ignore
+            # ISAM.load_csv acepta específicamente List[Dict[str, Any]]
+            if isinstance(idx, ISAM):
+                idx.load_csv(data_dicts)  # type: ignore[arg-type]
+            else:
+                # Fallback para otros tipos que puedan implementar load_csv
+                for row in rows:
+                    idx.insert(None, row)
 
         elif tipo == 'hash':
-            # CORREGIDO: Hash Extensible manejo específico
-            idx = self._init_index(tipo, table, index_field, None)
-            # Configurar el campo indexado ANTES de cargar datos
-            idx.field_index = index_field
-            idx.load_csv(path)  # Solo pasar path
+            # Hash Extensible requiere configuración específica
+            idx = self._init_index(tipo, table, index_field, None)  # Schema explícitamente None
+            if isinstance(idx, ExtendibleHash):
+                idx.field_index = index_field
+                idx.load_csv(path)  # ExtendibleHash.load_csv acepta str
+            else:
+                raise ValueError("Error inicializando Hash Extensible")
 
         elif tipo == 'bplustree':
-            # B+ Tree
-            idx = self._init_index(tipo, table, index_field, None)
-            idx.field_index = index_field
-            idx.load_csv(path)
+            # B+ Tree requiere configuración específica
+            idx = self._init_index(tipo, table, index_field, None)  # Schema explícitamente None
+            if isinstance(idx, BPlusTree):
+                idx.field_index = index_field
+                idx.load_csv(path)  # BPlusTree.load_csv acepta str
+            else:
+                raise ValueError("Error inicializando B+ Tree")
 
         else:
-            # Otros índices (sequential)
-            with open(path, newline='', encoding='latin1') as f:
-                reader = csv.reader(f)
-                rows = list(reader)
+            # Sequential File y otros índices
+            idx = self._init_index(tipo, table, index_field, None)  # Schema explícitamente None
             
-            idx = self._init_index(tipo, table, index_field, None)
-            
-            if hasattr(idx, 'load_csv') and tipo != 'bplustree':
-                idx.load_csv(path)
+            if isinstance(idx, SequentialFile):
+                # Sequential File acepta path directamente
+                idx.load_csv(path)  # SequentialFile.load_csv acepta str
             else:
+                # Para otros índices, cargar datos manualmente
+                with open(path, newline='', encoding='latin1') as f:
+                    reader = csv.reader(f)
+                    rows = list(reader)
+                
                 for row in rows:
                     idx.insert(None, row)
 
         # Guardar índice en tabla
         self.tables[table] = idx
         
-        # Mensaje de resultado con estadísticas específicas para hash
         headers_count = len(self.table_headers.get(table, []))
         tipo_real = type(idx).__name__
         
-        # Información adicional por tipo de índice
         extra_info = ""
-        
         if isinstance(idx, ExtendibleHash):
-            # NUEVO: Estadísticas de Hash
             if hasattr(idx, 'get_stats'):
                 stats = idx.get_stats()
                 extra_info = f" (Profundidad global: {stats['global_depth']}, {stats['total_records']} registros, {stats['total_buckets']} buckets)"
-            
         elif RTREE_AVAILABLE and MultidimensionalRTree and isinstance(idx, MultidimensionalRTree):
-            # Usar getattr para acceso seguro al atributo
             records_loaded = getattr(idx, 'data_map', {})
             if isinstance(records_loaded, dict):
                 extra_info = f" ({len(records_loaded)} registros espaciales cargados)"
@@ -166,36 +320,43 @@ class Engine:
         return self.table_file_paths.get(table_name, '')
     
     def get_table_info(self, table_name: str) -> dict:
-        """Obtener información completa de una tabla incluyendo headers"""
-        if table_name not in self.tables:
-            return {}
-        
-        index = self.tables[table_name]
-        
-        # NUEVO: Información específica para Hash
+        """Obtener información completa de una tabla"""
         info = {
             'name': table_name,
-            'index_type': type(index).__name__,
             'headers': self.get_table_headers(table_name),
             'csv_path': self.get_table_file_path(table_name),
-            'field_index': getattr(index, 'field_index', None),
             'headers_count': len(self.get_table_headers(table_name))
         }
         
-        # Agregar estadísticas específicas para Hash
-        if isinstance(index, ExtendibleHash) and hasattr(index, 'get_stats'):
-            info['hash_stats'] = index.get_stats()
+        # Información específica para tablas textuales
+        if table_name in self.text_tables:
+            text_info = self.text_tables[table_name]
+            info.update({
+                'index_type': 'SPIMI_TextIndex',
+                'text_fields': text_info['text_fields'],
+                'index_path': text_info['index_path']
+            })
+        elif table_name in self.tables:
+            index = self.tables[table_name]
+            info.update({
+                'index_type': type(index).__name__,
+                'field_index': getattr(index, 'field_index', None)
+            })
+            
+            if isinstance(index, ExtendibleHash) and hasattr(index, 'get_stats'):
+                info['hash_stats'] = index.get_stats()
         
         return info
     
     def list_all_tables_info(self) -> Dict[str, dict]:
         """Obtener información de todas las tablas cargadas"""
-        return {table_name: self.get_table_info(table_name) for table_name in self.tables.keys()}
+        all_tables = set(self.tables.keys()) | set(self.text_tables.keys())
+        return {table_name: self.get_table_info(table_name) for table_name in all_tables}
 
     # ========== MÉTODOS PRINCIPALES ==========
 
     def _format_record_to_csv(self, record: Any) -> str:
-        """Convierte cualquier registro a formato CSV (separado por comas)"""
+        """Convierte cualquier registro a formato CSV"""
         if isinstance(record, dict):
             values = [str(v) for v in record.values()]
         elif isinstance(record, (list, tuple)):
@@ -221,54 +382,47 @@ class Engine:
     def _list_to_isam_dict(self, table: str, values: List[str]) -> Dict[str, Any]:
         """Convierte una lista de valores a diccionario para ISAM"""
         if table not in self.table_schemas:
-            # Generar schema básico si no existe
             schema = [(f'col{i}', '20s', 20) for i in range(len(values))]
             self.table_schemas[table] = schema
         else:
             schema = self.table_schemas[table]
         
-        # Crear diccionario usando las claves del schema
         result = {}
         for i, (field_name, _, _) in enumerate(schema):
             if i < len(values):
                 result[field_name] = values[i]
             else:
-                result[field_name] = ""  # Valor por defecto para campos faltantes
+                result[field_name] = ""
         
         return result
 
     def insert(self, table: str, values: List[str]) -> str:
-        """Insertar un registro en una tabla - CORREGIDO para ISAM"""
+        """Insertar un registro en una tabla"""
         if table not in self.tables:
             raise ValueError(f"Tabla '{table}' no encontrada")
         
         idx = self.tables[table]
         
-        # NUEVA LÓGICA: Manejo especial para ISAM
         if isinstance(idx, ISAM):
-            # Convertir lista a diccionario para ISAM
             val_dict = self._list_to_isam_dict(table, values)
             idx.insert(None, val_dict)
         else:
-            # Para otros índices (incluido Hash), usar el método original
             idx.insert(None, values)
         
         return f"Registro insertado en '{table}'"
 
     def scan(self, table: str) -> str:
-        """Escanear tabla completa con manejo específico por tipo de índice"""
+        """Escanear tabla completa"""
         if table not in self.tables:
             raise ValueError(f"Tabla '{table}' no encontrada")
         
         idx = self.tables[table]
         registros = idx.scan_all()
         
-        # Manejo específico para R-Tree - CORREGIDO
         if RTREE_AVAILABLE and MultidimensionalRTree and isinstance(idx, MultidimensionalRTree):
             formatted_records = []
             for vector, obj in registros:
                 if isinstance(obj, list):
-                    # Formatear cada valor como CSV limpio
                     cleaned_values = []
                     for v in obj:
                         cleaned = str(v).strip()
@@ -282,7 +436,6 @@ class Engine:
                     formatted_records.append(csv_record)
             return '\n'.join(formatted_records)
         
-        # Manejo para otros tipos de índices (incluye Hash mejorado)
         formatted_records = []
         for record in registros:
             csv_record = self._format_record_to_csv(record)
@@ -290,154 +443,80 @@ class Engine:
         
         return '\n'.join(formatted_records)
 
-   # engine.py - REEMPLAZAR COMPLETAMENTE el método search con esta versión:
-
     def search(self, table: str, key: str, column: int) -> List[str]:
-        """Buscar registros y devolverlos en formato CSV - VERSIÓN CORREGIDA PARA SEQUENTIAL FILE"""
+        """Buscar registros básicos (solo para índices tradicionales)"""
         if table not in self.tables:
             raise ValueError(f"Tabla '{table}' no encontrada")
+        
         idx = self.tables[table]
-
-        print(f"\n{'='*60}")
-        print(f"🔍 SEARCH DEBUG - Buscando en tabla '{table}'")
-        print(f"   - Clave: '{key}'")
-        print(f"   - Columna: {column}")
-        print(f"   - Tipo de índice: {type(idx).__name__}")
         
-        # Obtener headers para referencia
-        headers = self.get_table_headers(table)
-        if column < len(headers):
-            print(f"   - Nombre de columna: '{headers[column]}'")
-        
-        # OPTIMIZACIÓN: Hash con búsqueda directa (solo si coincide el field_index)
+        # Para hash con búsqueda directa
         if (hasattr(idx, 'search') and hasattr(idx, 'field_index') and 
             idx.field_index == column and isinstance(idx, ExtendibleHash)):
             try:
-                print(f"🚀 Usando búsqueda directa del Hash (field_index={idx.field_index})")
                 resultados = idx.search(key)
                 final_result = []
                 for r in resultados:
                     csv_record = self._format_record_to_csv(r)
                     final_result.append(csv_record)
-                print(f"✅ Búsqueda directa encontró {len(final_result)} registros")
-                print(f"{'='*60}")
                 return final_result
             except Exception as e:
-                print(f"❌ Error en búsqueda directa: {e}")
+                print(f"Error en búsqueda directa: {e}")
         
-        # FULL SCAN con filtro manual - VERSIÓN CORREGIDA
-        print(f"🔄 Usando full scan con filtro manual")
+        # Full scan con filtro manual para otros casos
         resultados = []
         all_records = idx.scan_all()
-        total_records = len(all_records)
-        print(f"📊 Escaneando {total_records} registros totales")
         
-        # Caso especial para R-Tree
-        if RTREE_AVAILABLE and MultidimensionalRTree and isinstance(idx, MultidimensionalRTree):
-            print(f"🗺️ Procesando R-Tree...")
-            for vector, obj in all_records:
-                if isinstance(obj, list) and column < len(obj):
-                    obj_value = str(obj[column]).strip()
-                    if obj_value == str(key).strip():
-                        cleaned_values = []
-                        for v in obj:
-                            cleaned = str(v).strip()
-                            if ',' in cleaned or '"' in cleaned or '\n' in cleaned:
-                                cleaned = f'"{cleaned.replace('"', '""')}"'
-                            cleaned_values.append(cleaned)
-                        csv_record = ','.join(cleaned_values)
-                        resultados.append(csv_record)
-            print(f"✅ R-Tree encontró {len(resultados)} registros")
-            print(f"{'='*60}")
-            return resultados
-        
-        # PARA OTROS ÍNDICES - LÓGICA CORREGIDA PARA SEQUENTIAL FILE
-        matches_found = 0
-        
-        for row_index, row in enumerate(all_records):
+        for row in all_records:
             try:
-                # Extraer valor de la columna objetivo
                 cell_value = None
                 
                 if isinstance(row, dict):
-                    # Diccionario (ISAM)
                     values = list(row.values())
                     if column < len(values):
                         cell_value = str(values[column]).strip()
-                        
                 elif isinstance(row, (list, tuple)):
-                    # Lista/tupla (Hash, B+Tree)
                     if column < len(row):
                         cell_value = str(row[column]).strip()
-                        
                 elif isinstance(row, str):
-                    # String - CORREGIDO PARA SEQUENTIAL FILE
-                    import csv
-                    import io
-                    
-                    # DETECCIÓN AUTOMÁTICA DEL FORMATO
                     if '|' in row:
-                        # Sequential File usa separador |
                         cols = [c.strip() for c in row.split('|')]
                         if column < len(cols):
                             cell_value = cols[column].strip()
                     else:
-                        # Otros índices usan formato CSV
+                        import csv
+                        import io
                         try:
-                            # Usar csv.reader para parsing robusto
                             reader = csv.reader(io.StringIO(row.strip()))
                             cols = next(reader, [])
                             if column < len(cols):
                                 cell_value = cols[column].strip()
-                        except Exception:
-                            # Fallback: split por comas
+                        except:
                             cols = [c.strip() for c in row.split(',')]
                             if column < len(cols):
                                 cell_value = cols[column].strip()
                 
-                else:
-                    # Tipo desconocido
-                    print(f"⚠️ Tipo de registro desconocido: {type(row)}")
-                    continue
-                
-                # DEBUG para los primeros 5 registros
-                if row_index < 5:
-                    separator = "|" if isinstance(row, str) and "|" in row else ","
-                    print(f"🔍 Row {row_index} (sep='{separator}'): column[{column}]='{cell_value}' vs key='{key}' -> match={cell_value == str(key).strip() if cell_value else False}")
-                
-                # COMPARACIÓN EXACTA
                 if cell_value is not None and cell_value == str(key).strip():
                     csv_record = self._format_record_to_csv(row)
                     resultados.append(csv_record)
-                    matches_found += 1
                     
-                    # Debug para coincidencias
-                    if matches_found <= 3:  # Mostrar las primeras 3 coincidencias
-                        print(f"✅ COINCIDENCIA {matches_found}: {csv_record[:100]}...")
-                    
-            except Exception as e:
-                if row_index < 5:  # Solo mostrar errores para los primeros registros
-                    print(f"❌ Error procesando row {row_index}: {e}")
+            except Exception:
                 continue
 
-        print(f"📊 RESULTADO FINAL: {matches_found} registros coinciden de {total_records} totales")
-        print(f"{'='*60}")
         return resultados
 
     def range_search(self, table: str, begin_key: str, end_key: str) -> List[str]:
-        """Búsqueda por rango con soporte específico para R-Tree espacial"""
+        """Búsqueda por rango básica"""
         if table not in self.tables:
             raise ValueError(f"Tabla '{table}' no encontrada")
         
         idx = self.tables[table]
 
-        # ——— MANEJO ESPECÍFICO PARA R-TREE - CORREGIDO ———
+        # Manejo específico para R-Tree
         if RTREE_AVAILABLE and MultidimensionalRTree and isinstance(idx, MultidimensionalRTree):
             try:
-                # Parsear coordenadas del punto
                 point = [float(x.strip()) for x in begin_key.split(',')]
                 
-                # Determinar si es radio (float) o KNN (int)
                 try:
                     if '.' in str(end_key):
                         param = float(end_key)
@@ -446,14 +525,11 @@ class Engine:
                 except ValueError:
                     raise ValueError("Parámetro inválido para R-Tree")
                 
-                # Ejecutar búsqueda espacial
                 spatial_results = idx.range_search(point, param)
                 
-                # Formatear resultados con distancia
                 formatted_results = []
                 for dist, obj in spatial_results:
                     if isinstance(obj, list):
-                        # Limpiar valores CSV
                         cleaned_values = []
                         for v in obj:
                             cleaned = str(v).strip()
@@ -461,11 +537,9 @@ class Engine:
                                 cleaned = f'"{cleaned.replace('"', '""')}"'
                             cleaned_values.append(cleaned)
                         
-                        # Agregar distancia al final
                         csv_record = ','.join(cleaned_values) + f',{dist:.3f}'
                         formatted_results.append(csv_record)
                     else:
-                        # Fallback para objetos no-lista
                         csv_record = self._format_record_to_csv(obj)
                         formatted_results.append(f"{csv_record},{dist:.3f}")
                 
@@ -474,112 +548,50 @@ class Engine:
             except Exception as e:
                 raise ValueError(f"Error en búsqueda espacial R-Tree: {e}")
         
-        # NUEVO: Hash Extensible NO soporta rangos (comportamiento correcto)
         if isinstance(idx, ExtendibleHash):
             raise ValueError("Hash Extensible no soporta búsquedas por rango. Use ISAM o B+ Tree para rangos.")
         
-        # ——— OTROS TIPOS DE ÍNDICES ———
         if hasattr(idx, 'range_search'):
             raw_results = idx.range_search(begin_key, end_key)
             return [self._format_record_to_csv(r) for r in raw_results]
         
-        # ——— FALLBACK CONTROLADO ———
-        if not hasattr(idx, 'field_index'):
-            raise ValueError(f"Índice {type(idx).__name__} no soporta range_search")
-        
-        resultados: List[str] = []
-        field_idx = getattr(idx, 'field_index', 0)
-        
-        for row in idx.scan_all():
-            try:
-                # Extraer valor de comparación
-                if isinstance(row, dict):
-                    values = list(row.values())
-                    val = str(values[field_idx]) if field_idx < len(values) else ""
-                elif isinstance(row, (list, tuple)):
-                    val = str(row[field_idx]) if field_idx < len(row) else ""
-                elif isinstance(row, str):
-                    cols = row.split('|' if '|' in row else ',')
-                    val = cols[field_idx].strip() if field_idx < len(cols) else ""
-                else:
-                    val = str(row)
-                
-                # Aplicar filtro de rango
-                if begin_key <= val <= end_key:
-                    csv_record = self._format_record_to_csv(row)
-                    resultados.append(csv_record)
-                    
-            except (IndexError, ValueError):
-                continue
-        
-        return resultados
-
-    # En engine.py - REEMPLAZAR el método remove con esta versión mejorada:
+        return []
 
     def remove(self, table: str, key: str) -> List[str]:
-        """Eliminar registros con formato CSV consistente y mejor manejo de errores"""
+        """Eliminar registros básicos"""
         if table not in self.tables:
             raise ValueError(f"Tabla '{table}' no encontrada")
         
         idx = self.tables[table]
         
-        print(f"\n🗑️ ENGINE REMOVE:")
-        print(f"   - Tabla: {table}")
-        print(f"   - Clave: '{key}'")
-        print(f"   - Tipo de índice: {type(idx).__name__}")
-        print(f"   - Campo indexado: {getattr(idx, 'field_index', 'N/A')}")
-        
         if not hasattr(idx, 'remove'):
             raise NotImplementedError(f"El índice {type(idx).__name__} no soporta eliminación")
         
         try:
-            # Llamar al método remove del índice específico
             raw_results = idx.remove(key)
-            print(f"   🔍 Resultado raw del índice: {type(raw_results)} con {len(raw_results) if isinstance(raw_results, list) else 'N/A'} elementos")
             
             if not raw_results:
-                print("   ⚠️ El índice no encontró registros para eliminar")
                 return []
             
-            # Formatear resultados según el tipo de índice
             formatted_results = []
             
             if isinstance(idx, ExtendibleHash):
-                # Hash devuelve strings CSV directamente
-                print("   📝 Procesando resultados de Hash (formato CSV directo)")
                 formatted_results = raw_results if isinstance(raw_results, list) else [str(raw_results)]
-                
             elif hasattr(idx, '__class__') and 'SequentialFile' in str(type(idx)):
-                # Sequential File devuelve strings con separador |
-                print("   📝 Procesando resultados de Sequential File (separador |)")
                 for r in raw_results:
                     if isinstance(r, str) and '|' in r:
-                        # Convertir de | separado a CSV
                         cols = [c.strip() for c in r.split('|')]
                         csv_record = ','.join(f'"{c}"' if ',' in c else c for c in cols)
                         formatted_results.append(csv_record)
                     else:
                         formatted_results.append(self._format_record_to_csv(r))
-                        
             else:
-                # Otros índices (ISAM, B+Tree)
-                print("   📝 Procesando resultados de otros índices")
                 for r in raw_results:
                     csv_record = self._format_record_to_csv(r)
                     formatted_results.append(csv_record)
             
-            print(f"   ✅ Eliminación exitosa: {len(formatted_results)} registros eliminados")
-            
-            # Debug: mostrar los primeros registros eliminados
-            for i, record in enumerate(formatted_results[:3]):
-                print(f"   📋 Eliminado {i+1}: {record[:100]}{'...' if len(record) > 100 else ''}")
-            
             return formatted_results
             
         except Exception as e:
-            print(f"   ❌ Error eliminando registros: {e}")
-            import traceback
-            traceback.print_exc()
-            
-            # Devolver lista vacía en lugar de lanzar excepción
+            print(f"Error eliminando registros: {e}")
             return []

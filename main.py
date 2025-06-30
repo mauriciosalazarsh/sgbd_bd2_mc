@@ -1,259 +1,277 @@
 #!/usr/bin/env python3
 """
-Sistema de Base de Datos Multimodal
-Punto de entrada principal del sistema
+Sistema de Base de Datos Multimodal - Proyecto 2
+Testing interactivo para índices textuales SPIMI
 """
 
 import sys
 import os
+import time
+from typing import List, Dict, Any
 from engine import Engine
 from parser_sql.parser import SQLParser
 
-def demo_sql_queries(engine, parser):
-    """
-    Demostración de consultas SQL básicas
-    """
-    print("\n" + "="*60)
-    print("DEMO DE CONSULTAS SQL")
-    print("="*60)
+def interactive_sql_mode():
+    """Modo SQL interactivo donde el usuario controla todo"""
+    print("🎵 SISTEMA DE BASE DE DATOS MULTIMODAL - MODO SQL INTERACTIVO")
+    print("="*70)
+    print("💡 Escriba consultas SQL completas")
+    print("🔧 Ejemplo CREATE TABLE:")
+    print('   CREATE TABLE Spotify FROM FILE "datos/spotify_songs.csv"')
+    print('   USING INDEX SPIMI ("track_name", "track_artist", "lyrics");')
+    print("\n🔍 Ejemplo búsquedas:")
+    print("   SELECT * FROM Spotify WHERE lyrics @@ 'love heart' LIMIT 5;")
+    print("   SELECT track_name, track_artist FROM Spotify WHERE lyrics @@ 'amor' LIMIT 3;")
+    print("\n🎮 Comandos: 'help', 'tables', 'exit'")
+    print("="*70)
     
-    # Verificar si hay datos de ejemplo
-    sample_files = [
-        "datos/StudentsPerformance.csv",
-        "datos/powerplants.csv",
-        "datos/kcdatahouse.csv"
-    ]
-    
-    # Buscar un archivo que exista
-    sample_file = None
-    for file in sample_files:
-        if os.path.exists(file):
-            sample_file = file
-            break
-    
-    if not sample_file:
-        print("No se encontraron archivos de datos de ejemplo.")
-        print("Asegúrate de tener archivos CSV en la carpeta 'datos/'")
-        return
-    
-    print(f"Usando archivo de ejemplo: {sample_file}")
-    
-    try:
-        # 1. Crear tabla
-        print("\n1. Creando tabla con índice B+ Tree...")
-        create_query = f'create table students from file "{sample_file}" using index btree("id")'
-        print(f"Query: {create_query}")
-        result = parser.parse_and_execute(create_query)
-        print(f"Resultado: {result}")
-        
-        # 2. Escanear tabla
-        print("\n2. Escaneando tabla completa...")
-        scan_query = "select * from students"
-        print(f"Query: {scan_query}")
-        results = parser.parse_and_execute(scan_query)
-        print(f"Primeros 3 registros:")
-        for i, record in enumerate(results[:3]):
-            print(f"  {i+1}: {record}")
-        print(f"Total de registros: {len(results)}")
-        
-        # 3. Búsqueda exacta
-        print("\n3. Búsqueda por clave exacta...")
-        if results:
-            # Tomar el primer valor de la primera columna para buscar
-            first_record = results[0].split('|')
-            search_value = first_record[0].strip()
-            search_query = f"select * from students where id = {search_value}"
-            print(f"Query: {search_query}")
-            search_results = parser.parse_and_execute(search_query)
-            print(f"Registros encontrados: {len(search_results)}")
-            for record in search_results:
-                print(f"  {record}")
-        
-        # 4. Insertar registro
-        print("\n4. Insertando nuevo registro...")
-        insert_query = 'insert into students values ("999", "Test Student", "male", "group A", "some school", "standard", "free/reduced", "completed", "85", "90", "88")'
-        print(f"Query: {insert_query}")
-        result = parser.parse_and_execute(insert_query)
-        print(f"Resultado: {result}")
-        
-        # 5. Búsqueda del registro insertado
-        print("\n5. Verificando registro insertado...")
-        verify_query = "select * from students where id = 999"
-        print(f"Query: {verify_query}")
-        verify_results = parser.parse_and_execute(verify_query)
-        print(f"Registros encontrados: {len(verify_results)}")
-        for record in verify_results:
-            print(f"  {record}")
-        
-    except Exception as e:
-        print(f"Error en demo: {e}")
-
-def interactive_mode(engine, parser):
-    """
-    Modo interactivo para ejecutar consultas SQL
-    """
-    print("\n" + "="*60)
-    print("MODO INTERACTIVO SQL")
-    print("="*60)
-    print("Escribe 'help' para ver comandos disponibles")
-    print("Escribe 'exit' para salir")
-    print("Escribe 'tables' para ver las tablas disponibles")
-    
-    while True:
-        try:
-            query = input("\nSQL> ").strip()
-            
-            if query.lower() == 'exit':
-                print("¡Hasta luego!")
-                break
-            elif query.lower() == 'help':
-                print_help()
-                continue
-            elif query.lower() == 'tables':
-                print("Tablas disponibles:")
-                for table_name in engine.tables.keys():
-                    print(f"  - {table_name}")
-                continue
-            elif not query:
-                continue
-            
-            # Validar sintaxis
-            if not parser.validate_syntax(query):
-                print(f"❌ Sintaxis inválida")
-                print(f"💡 Sugerencia: {parser.suggest_correction(query)}")
-                continue
-            
-            # Ejecutar consulta
-            print(f"🔄 Ejecutando: {query}")
-            result = parser.parse_and_execute(query)
-            
-            # Mostrar resultado
-            if isinstance(result, list):
-                print(f"✅ Se encontraron {len(result)} registros:")
-                for i, record in enumerate(result[:10]):  # Mostrar máximo 10
-                    print(f"  {i+1}: {record}")
-                if len(result) > 10:
-                    print(f"  ... y {len(result) - 10} registros más")
-            else:
-                print(f"✅ {result}")
-                
-        except KeyboardInterrupt:
-            print("\n\n¡Hasta luego!")
-            break
-        except Exception as e:
-            print(f"❌ Error: {e}")
-
-def print_help():
-    """
-    Muestra ayuda sobre los comandos disponibles
-    """
-    help_text = """
-COMANDOS DISPONIBLES:
-
-📁 CREAR TABLA:
-   create table <nombre> from file "<ruta>" using index <tipo>("<columna>")
-   
-   Tipos de índice: sequential, isam, hash, btree, rtree
-   Ejemplo: create table students from file "datos/students.csv" using index btree("id")
-
-🔍 CONSULTAS SELECT:
-   select * from <tabla>                              # Todos los registros
-   select * from <tabla> where <col> = <valor>        # Búsqueda exacta
-   select * from <tabla> where <col> between <a> and <b>  # Rango
-   select * from <tabla> where <col> in (<punto>, <radio>)  # Espacial (solo R-Tree)
-
-➕ INSERTAR:
-   insert into <tabla> values (<val1>, <val2>, ...)
-   
-❌ ELIMINAR:
-   delete from <tabla> where <col> = <valor>
-
-🔧 COMANDOS ESPECIALES:
-   help     - Mostrar esta ayuda
-   tables   - Listar tablas disponibles
-   exit     - Salir del programa
-"""
-    print(help_text)
-
-def main():
-    """
-    Función principal del sistema
-    """
-    print("🚀 Sistema de Base de Datos Multimodal")
-    print("=====================================")
-    
-    # Inicializar motor y parser
+    # Inicializar sistema
     engine = Engine()
     parser = SQLParser(engine)
     
-    # Verificar argumentos de línea de comandos
-    if len(sys.argv) > 1:
-        mode = sys.argv[1].lower()
-        
-        if mode == 'api':
-            # Iniciar API
-            print("🌐 Iniciando API FastAPI...")
-            try:
-                import uvicorn
-                from backend.api import app
-                uvicorn.run(app, host="0.0.0.0", port=8000)
-            except ImportError:
-                print("❌ Error: FastAPI no está instalado.")
-                print("💡 Instala las dependencias: pip install -r requirements.txt")
-            except Exception as e:
-                print(f"❌ Error iniciando API: {e}")
-        
-        elif mode == 'demo':
-            # Ejecutar demo
-            demo_sql_queries(engine, parser)
-        
-        elif mode == 'interactive':
-            # Modo interactivo
-            interactive_mode(engine, parser)
-        
-        else:
-            print(f"❌ Modo no reconocido: {mode}")
-            print("Modos disponibles: api, demo, interactive")
-    
-    else:
-        # Mostrar opciones disponibles
-        print("\nOpciones disponibles:")
-        print("  python main.py api         # Iniciar API FastAPI")
-        print("  python main.py demo        # Ejecutar demo con consultas")
-        print("  python main.py interactive # Modo interactivo SQL")
-        print("\nO simplemente ejecuta main.py para ver este menú")
-        
-        # Preguntar al usuario qué quiere hacer
-        print("\n¿Qué deseas hacer?")
-        print("1. Iniciar API FastAPI")
-        print("2. Ejecutar demo")
-        print("3. Modo interactivo SQL")
-        print("4. Salir")
-        
+    while True:
         try:
-            choice = input("\nSelecciona una opción (1-4): ").strip()
+            query = input("\n🎵 SQL> ").strip()
             
-            if choice == '1':
-                try:
-                    import uvicorn
-                    from backend.api import app
-                    print("🌐 Iniciando API en http://localhost:8000")
-                    print("📖 Documentación disponible en http://localhost:8000/docs")
-                    uvicorn.run(app, host="0.0.0.0", port=8000)
-                except ImportError:
-                    print("❌ Error: FastAPI no está instalado.")
-                    print("💡 Instala las dependencias: pip install -r requirements.txt")
-            elif choice == '2':
-                demo_sql_queries(engine, parser)
-            elif choice == '3':
-                interactive_mode(engine, parser)
-            elif choice == '4':
-                print("¡Hasta luego!")
-            else:
-                print("❌ Opción no válida")
+            if query.lower() == 'exit':
+                print("👋 ¡Hasta luego!")
+                break
+            elif query.lower() == 'help':
+                print("\n📖 COMANDOS DISPONIBLES:")
+                print("  CREATE TABLE - Crear tabla con índice")
+                print("  SELECT con @@ - Búsqueda textual")
+                print("  tables - Ver tablas cargadas") 
+                print("  help - Mostrar esta ayuda")
+                print("  exit - Salir")
+                print("\n📝 SINTAXIS:")
+                print('  CREATE TABLE nombre FROM FILE "ruta.csv" USING INDEX SPIMI ("campo1", "campo2");')
+                print("  SELECT campos FROM tabla WHERE campo @@ 'consulta' LIMIT k;")
+                continue
+            elif query.lower() == 'tables':
+                print("\n📊 TABLAS CARGADAS:")
+                tables_info = engine.list_all_tables_info()
+                if not tables_info:
+                    print("  ⚠️ No hay tablas cargadas")
+                else:
+                    for table_name, info in tables_info.items():
+                        print(f"  📋 {table_name}: {info.get('index_type', 'N/A')} ({info.get('headers_count', 0)} columnas)")
+                        if 'text_fields' in info:
+                            print(f"      Campos textuales: {', '.join(info['text_fields'])}")
+                continue
+            
+            if not query:
+                continue
+            
+            # Ejecutar consulta
+            print(f"\n⚡ Ejecutando: {query}")
+            start_time = time.time()
+            
+            try:
+                results = parser.parse_and_execute(query)
+                execution_time = time.time() - start_time
+                
+                # Manejar diferentes tipos de resultados
+                if isinstance(results, str):
+                    # CREATE TABLE u otras operaciones que retornan string
+                    print(f"✅ {results}")
+                    print(f"⏱️ Tiempo: {execution_time:.4f}s")
+                    
+                elif isinstance(results, list) and len(results) > 0:
+                    # SELECT que retorna lista de resultados
+                    print(f"✅ Encontrados {len(results)} resultados en {execution_time:.4f}s")
+                    print(f"\n📋 RESULTADOS:")
+                    print("-" * 60)
+                    
+                    for i, result in enumerate(results[:10], 1):  # Mostrar máximo 10
+                        # Extraer información del CSV
+                        try:
+                            import csv
+                            import io
+                            reader = csv.reader(io.StringIO(result))
+                            values = next(reader, [])
+                            
+                            # Detectar si tiene score al final (búsqueda textual)
+                            if len(values) > 0:
+                                try:
+                                    score = float(values[-1])
+                                    if 0 <= score <= 1:  # Es probable que sea un score
+                                        track_name = values[1] if len(values) > 1 else "N/A"
+                                        track_artist = values[2] if len(values) > 2 else "N/A"
+                                        print(f"  {i:2d}. [{score:.4f}] {track_name} - {track_artist}")
+                                    else:
+                                        print(f"  {i:2d}. {result[:100]}{'...' if len(result) > 100 else ''}")
+                                except ValueError:
+                                    print(f"  {i:2d}. {result[:100]}{'...' if len(result) > 100 else ''}")
+                            else:
+                                print(f"  {i:2d}. {result[:100]}{'...' if len(result) > 100 else ''}")
+                                
+                        except Exception:
+                            print(f"  {i:2d}. {result[:100]}{'...' if len(result) > 100 else ''}")
+                    
+                    if len(results) > 10:
+                        print(f"  ... y {len(results) - 10} resultados más")
+                        
+                elif isinstance(results, list) and len(results) == 0:
+                    print(f"⚠️ No se encontraron resultados ({execution_time:.4f}s)")
+                    
+                else:
+                    print(f"✅ Operación completada ({execution_time:.4f}s)")
+                    
+            except Exception as e:
+                print(f"❌ Error: {e}")
+                # Mostrar error más detallado solo si es útil
+                if "no encontrada" in str(e).lower():
+                    print("💡 Tip: Primero crea una tabla con CREATE TABLE")
+                elif "operador @@" in str(e).lower():
+                    print("💡 Tip: Use sintaxis SELECT campos FROM tabla WHERE campo @@ 'consulta' LIMIT k;")
                 
         except KeyboardInterrupt:
-            print("\n\n¡Hasta luego!")
+            print("\n👋 ¡Hasta luego!")
+            break
+        except EOFError:
+            print("\n👋 ¡Hasta luego!")
+            break
+
+def demo_mode():
+    """Modo demo automático (el comportamiento anterior)"""
+    print("🎵 SISTEMA DE BASE DE DATOS MULTIMODAL - MODO DEMO")
+    print("="*60)
+    
+    # Verificar archivo de datos
+    csv_file = "datos/spotify_songs.csv"
+    if not os.path.exists(csv_file):
+        print(f"❌ Archivo no encontrado: {csv_file}")
+        print("📁 Asegúrate de que el archivo existe en la ruta especificada")
+        return
+    
+    # Inicializar sistema
+    engine = Engine()
+    parser = SQLParser(engine)
+    
+    print(f"📁 Archivo encontrado: {csv_file}")
+    print("🔧 Inicializando sistema...\n")
+    
+    # Ejecutar demo automático
+    print("🔨 CREANDO TABLA CON ÍNDICE SPIMI")
+    print("-" * 50)
+    
+    create_query = '''CREATE TABLE Spotify
+FROM FILE "datos/spotify_songs.csv"
+USING INDEX SPIMI ("track_name", "track_artist", "track_album_name", "lyrics");'''
+    
+    print(f"📝 Ejecutando: {create_query}")
+    
+    try:
+        start_time = time.time()
+        result = parser.parse_and_execute(create_query)
+        creation_time = time.time() - start_time
+        
+        print(f"✅ {result}")
+        print(f"⏱️ Tiempo de creación: {creation_time:.2f} segundos\n")
+        
+        # Ejecutar consultas de demo
+        demo_queries(parser)
+        
+    except Exception as e:
+        print(f"❌ Error creando tabla: {e}")
+        import traceback
+        traceback.print_exc()
+
+def demo_queries(parser):
+    """Ejecuta consultas de demostración"""
+    print("🔍 EJECUTANDO CONSULTAS DE DEMOSTRACIÓN")
+    print("-" * 50)
+    
+    test_queries = [
+        {
+            'description': 'Búsqueda en lyrics: "love heart"',
+            'query': '''SELECT * FROM Spotify WHERE lyrics @@ 'love heart' LIMIT 5;'''
+        },
+        {
+            'description': 'Campos específicos con español',
+            'query': '''SELECT track_name, track_artist FROM Spotify WHERE lyrics @@ 'amor corazón' LIMIT 10;'''
+        },
+        {
+            'description': 'Búsqueda en track_name: "freedom"',
+            'query': '''SELECT * FROM Spotify WHERE track_name @@ 'freedom' LIMIT 3;'''
+        },
+        {
+            'description': 'Frase entre comillas',
+            'query': '''SELECT * FROM Spotify WHERE lyrics @@ "dancing in the dark" LIMIT 5;'''
+        }
+    ]
+    
+    for i, test_case in enumerate(test_queries, 1):
+        print(f"\n--- DEMO {i}: {test_case['description']} ---")
+        print(f"📝 Query: {test_case['query']}")
+        
+        try:
+            start_time = time.time()
+            results = parser.parse_and_execute(test_case['query'])
+            query_time = time.time() - start_time
+            
+            if results and len(results) > 0:
+                print(f"✅ Encontrados {len(results)} resultados en {query_time:.4f}s")
+                
+                for j, result in enumerate(results[:3], 1):
+                    try:
+                        import csv
+                        import io
+                        reader = csv.reader(io.StringIO(result))
+                        values = next(reader, [])
+                        
+                        track_name = values[1] if len(values) > 1 else "N/A"
+                        track_artist = values[2] if len(values) > 2 else "N/A" 
+                        score = values[-1] if len(values) > 0 else "0.0"
+                        
+                        print(f"  {j}. [{score}] {track_name} - {track_artist}")
+                        
+                    except Exception:
+                        print(f"  {j}. {result[:100]}...")
+                
+                if len(results) > 3:
+                    print(f"  ... y {len(results) - 3} resultados más")
+            else:
+                print(f"⚠️ No se encontraron resultados ({query_time:.4f}s)")
+                
+        except Exception as e:
+            print(f"❌ Error: {e}")
+        
+        if i < len(test_queries):
+            input("\n🔵 Presiona Enter para continuar...")
+
+def main():
+    """Función principal con opciones"""
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '--demo':
+            demo_mode()
+        elif sys.argv[1] == '--interactive':
+            interactive_sql_mode()
+        else:
+            print("Uso: python main.py [--demo|--interactive]")
+    else:
+        # Preguntar qué modo quiere
+        print("🎵 SISTEMA DE BASE DE DATOS MULTIMODAL")
+        print("="*50)
+        print("Selecciona el modo:")
+        print("1. 🎮 Interactivo (tú escribes las consultas SQL)")
+        print("2. 🚀 Demo automático (ejecuta ejemplos)")
+        print("3. 🚪 Salir")
+        
+        while True:
+            choice = input("\n🎯 Opción (1-3): ").strip()
+            
+            if choice == '1':
+                interactive_sql_mode()
+                break
+            elif choice == '2':
+                demo_mode()
+                break
+            elif choice == '3':
+                print("👋 ¡Hasta luego!")
+                break
+            else:
+                print("❌ Opción inválida. Selecciona 1, 2 o 3.")
 
 if __name__ == "__main__":
     main()

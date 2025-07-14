@@ -1,0 +1,262 @@
+[
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.022257089614868164,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Who's Got Your Love - Mike Williams Remix,Cheat Co",
+      "Strangers,Vigiland,Strangers,edm,0.0998",
+      "Nobody,Local Sound,Nobody,pop,0.0978"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.008060932159423828,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.02051568031311035,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Let's Dance - 1999 Remaster,David Bowie,Let's Danc",
+      "Dance Monkey,Tones and I,Dance Monkey (Stripped Ba",
+      "Hundred Miles,Yall,Hundred Miles,pop,0.1995"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.0003249645233154297,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.020978212356567383,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "All Day and All of the Night,The Kinks,Kinks,rock,",
+      "Every Day - Radio Edit,Eric Prydz,Every Day,edm,0.",
+      "People Crying Every Night,A R I Z O N A,People Cry"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.00032782554626464844,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.02077198028564453,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Just A Lover - Pomo Remix,Hayden James,Just A Love",
+      "Crazy Heart,The Cranberries,In the End,rock,0.1471",
+      "Try Me,James Brown,20 All-Time Greatest Hits!,r&b,"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.0003452301025390625,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.01991581916809082,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Old Time Rock & Roll,Bob Seger,Stranger In Town,ro",
+      "We Will Rock You - Remastered,Queen,News Of The Wo",
+      "Tell It to My Heart,Taylor Dayne,Platinum & Gold C"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.00030684471130371094,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.019585132598876953,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "We Like To Party - Radio Edit,Showtek,We Like To P",
+      "Love's Gonna Get You - Ron Rockwell Remix,Michael ",
+      "This Is How We Party - Cat Dealers Remix,R3HAB,Thi"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.00037980079650878906,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.0198211669921875,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Dream On,Blacktop Mojo,Burn the Ships,rock,0.1861",
+      "On Melancholy Hill,Gorillaz,Plastic Beach,pop,0.14",
+      "Peachy Keen,L Devine,Peachy Keen,pop,0.1362"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.0007297992706298828,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.02089667320251465,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Rocket,Mike Williams,Rocket,edm,0.165",
+      "Make It Right (feat. Lauv),BTS,Make It Right (feat",
+      "Lost At Sea,Dante Klein,Lost At Sea,edm,0.1109"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.0012390613555908203,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.019671916961669922,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Turn Up the Music,Adam Hicks,Lemonade Mouth,pop,0.",
+      "Old Time Rock & Roll,Bob Seger,Stranger In Town,ro",
+      "Won't Live Here,Daniel Caesar,Won't Live Here,r&b,"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.0004057884216308594,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.020442724227905273,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Keep Going,Syn Cole,Keep Going,edm,0.1387",
+      "BBoom BBoom,MOMOLAND,GREAT!,pop,0.1212",
+      "Crazy Heart,The Cranberries,In the End,rock,0.1154"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.0003910064697265625,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  }
+]

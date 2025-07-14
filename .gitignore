@@ -1,13 +1,14 @@
-# .gitignore
-
 # Python
 __pycache__/
 *.pyc
 *.pkl
-venv/
+venv*/
 
-# React
+# React / Node
 node_modules/
 .next/
 dist/
 .env
+
+# No subir datasets
+datos/

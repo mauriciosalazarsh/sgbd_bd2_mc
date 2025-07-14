@@ -46,22 +46,22 @@ class Engine:
                 self.table_headers[table_name] = headers
                 self.table_file_paths[table_name] = csv_path
                 
-            print(f"📝 Tabla textual '{table_name}' registrada exitosamente")
-            print(f"   📁 CSV: {csv_path}")
-            print(f"   💾 Índice: {index_path}")
-            print(f"   📋 Campos textuales: {text_fields}")
-            print(f"   📊 Headers: {len(headers)} columnas")
+            print(f" Tabla textual '{table_name}' registrada exitosamente")
+            print(f"    CSV: {csv_path}")
+            print(f"    Índice: {index_path}")
+            print(f"    Campos textuales: {text_fields}")
+            print(f"    Headers: {len(headers)} columnas")
             
         except Exception as e:
-            print(f"⚠️ Error leyendo headers para tabla {table_name}: {e}")
+            print(f" Error leyendo headers para tabla {table_name}: {e}")
 
     def textual_search(self, table_name: str, query_text: str, k: int = 10) -> List[Tuple[Dict[str, Any], float]]:
         """
         Ejecuta búsqueda textual usando el índice SPIMI
         """
-        print(f"🔍 Búsqueda textual en tabla '{table_name}'")
-        print(f"📝 Consulta: '{query_text}'")
-        print(f"📊 Top-K: {k}")
+        print(f" Búsqueda textual en tabla '{table_name}'")
+        print(f" Consulta: '{query_text}'")
+        print(f" Top-K: {k}")
         
         # Verificar si es tabla textual
         if table_name not in self.text_tables:
@@ -80,13 +80,13 @@ class Engine:
             if not os.path.exists(index_path):
                 raise ValueError(f"Archivo de índice no encontrado: {index_path}")
             
-            print(f"📂 Cargando índice desde: {index_path}")
+            print(f" Cargando índice desde: {index_path}")
             
             # Cargar datos del índice
             with open(index_path, 'rb') as f:
                 index_data = pickle.load(f)
             
-            print(f"📋 Índice cargado: {len(index_data.get('index', {}))} términos")
+            print(f" Índice cargado: {len(index_data.get('index', {}))} términos")
             
             # Cargar documentos originales para los resultados
             documents = []
@@ -95,7 +95,7 @@ class Engine:
                 for row in reader:
                     documents.append(row)
             
-            print(f"📄 Documentos cargados: {len(documents)}")
+            print(f" Documentos cargados: {len(documents)}")
             
             # Procesar consulta usando componentes de InvertedIndex
             # Crear un índice temporal para ejecutar la búsqueda
@@ -108,7 +108,7 @@ class Engine:
             
             # OPTIMIZACIÓN: Cargar normas precalculadas si existen
             if 'document_norms' in index_data:
-                print("📊 Cargando normas precalculadas...")
+                print(" Cargando normas precalculadas...")
                 temp_index.tfidf_calculator.document_norms = index_data['document_norms']
                 temp_index.tfidf_calculator.document_count = temp_index.total_documents
                 temp_index.tfidf_calculator.vocabulary = set(temp_index.inverted_index.keys())
@@ -116,28 +116,28 @@ class Engine:
                 # Cargar document frequencies
                 temp_index.tfidf_calculator.document_frequencies = index_data.get('document_frequencies', {})
                 
-                print(f"✅ Configuración TF-IDF cargada desde índice")
+                print(f" Configuración TF-IDF cargada desde índice")
             else:
-                print("⚠️ Normas no encontradas en índice, calculando...")
+                print(" Normas no encontradas en índice, calculando...")
                 # Fallback al método optimizado anterior
                 self._calculate_document_norms_optimized(temp_index)
             
             # Ejecutar búsqueda
             results = temp_index.search(query_text, k)
             
-            print(f"✅ Búsqueda completada: {len(results)} resultados encontrados")
+            print(f" Búsqueda completada: {len(results)} resultados encontrados")
             
             return results
             
         except Exception as e:
-            print(f"❌ Error en búsqueda textual: {e}")
+            print(f" Error en búsqueda textual: {e}")
             import traceback
             traceback.print_exc()
             return []
 
     def _calculate_document_norms_optimized(self, temp_index):
         """Calcula normas de documentos de manera optimizada"""
-        print("📊 Calculando normas de documentos (método optimizado)...")
+        print(" Calculando normas de documentos (método optimizado)...")
         
         # Configurar TF-IDF calculator básico
         temp_index.tfidf_calculator.document_count = temp_index.total_documents
@@ -168,7 +168,7 @@ class Engine:
             else:
                 temp_index.tfidf_calculator.document_norms[doc_id] = 0.0
         
-        print(f"✅ Normas calculadas para {len(temp_index.tfidf_calculator.document_norms)} documentos")
+        print(f" Normas calculadas para {len(temp_index.tfidf_calculator.document_norms)} documentos")
 
     def _init_index(self, tipo: str, table: str, index_field: int, schema: Optional[List[Tuple[str, str, int]]]) -> BaseIndex:
         """Inicializa un índice según su tipo"""
@@ -328,6 +328,25 @@ class Engine:
             'headers_count': len(self.get_table_headers(table_name))
         }
         
+        # Calcular record_count
+        record_count = 0
+        csv_path = self.get_table_file_path(table_name)
+        if csv_path and os.path.exists(csv_path):
+            try:
+                import pandas as pd
+                df = pd.read_csv(csv_path)
+                record_count = len(df)
+            except Exception as e:
+                print(f"Error calculando record_count para {table_name}: {e}")
+                # Fallback: contar líneas del archivo
+                try:
+                    with open(csv_path, 'r', encoding='utf-8') as f:
+                        record_count = sum(1 for line in f) - 1  # -1 para excluir header
+                except:
+                    record_count = 0
+        
+        info['record_count'] = record_count
+        
         # Información específica para tablas textuales
         if table_name in self.text_tables:
             text_info = self.text_tables[table_name]
@@ -374,7 +393,7 @@ class Engine:
         for v in values:
             cleaned = str(v).strip()
             if ',' in cleaned or '"' in cleaned or '\n' in cleaned:
-                cleaned = f'"{cleaned.replace('"', '""')}"'
+                cleaned = '"' + cleaned.replace('"', '""') + '"'
             cleaned_values.append(cleaned)
         
         return ','.join(cleaned_values)
@@ -427,7 +446,7 @@ class Engine:
                     for v in obj:
                         cleaned = str(v).strip()
                         if ',' in cleaned or '"' in cleaned or '\n' in cleaned:
-                            cleaned = f'"{cleaned.replace('"', '""')}"'
+                            cleaned = '"' + cleaned.replace('"', '""') + '"'
                         cleaned_values.append(cleaned)
                     csv_record = ','.join(cleaned_values)
                     formatted_records.append(csv_record)
@@ -534,7 +553,7 @@ class Engine:
                         for v in obj:
                             cleaned = str(v).strip()
                             if ',' in cleaned or '"' in cleaned or '\n' in cleaned:
-                                cleaned = f'"{cleaned.replace('"', '""')}"'
+                                cleaned = '"' + cleaned.replace('"', '""') + '"'
                             cleaned_values.append(cleaned)
                         
                         csv_record = ','.join(cleaned_values) + f',{dist:.3f}'

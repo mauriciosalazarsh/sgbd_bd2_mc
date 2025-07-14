@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react"
 import { 
   Database, Grid3X3, Play, HelpCircle, RotateCcw, ChevronDown, Search, Settings, User, 
   AlertCircle, CheckCircle, Loader2, Plus, Upload, FileText, MapPin, Hash, TreePine,
-  Building, X, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+  Building, X, Download, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  BookOpen, MessageSquare, Type, Zap, Image, Music, Camera, Headphones
 } from "lucide-react"
 
 import { DatabaseAPI, TableInfo, QueryResult, TableScanResult } from "../lib/api"
@@ -24,11 +25,36 @@ interface CreateTableModal {
   indexField: string;
 }
 
-// TableInfo ya está importado desde ../lib/api
+interface CreateTextIndexModal {
+  isOpen: boolean;
+  tableName: string;
+  csvFile: string;
+  textFields: string[];
+  language: 'spanish' | 'english';
+}
+
+interface TextSearchModal {
+  isOpen: boolean;
+  tableName: string;
+  query: string;
+  k: number;
+  fields: string[];
+}
+
+interface MultimediaSearchModal {
+  isOpen: boolean;
+  tableName: string;
+  queryFile: File | null;
+  queryFilePath: string;
+  k: number;
+  fields: string[];
+  method: 'SIFT' | 'ResNet50' | 'InceptionV3' | 'MFCC' | 'Spectrogram' | 'Comprehensive';
+  mediaType: 'image' | 'audio';
+}
 
 export default function DatabaseManager() {
   const [selectedTable, setSelectedTable] = useState<string>("")
-  const [sqlQuery, setSqlQuery] = useState("select * from students where math_score > 80;")
+  const [sqlQuery, setSqlQuery] = useState("")
   const [tables, setTables] = useState<TableInfo[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isConnected, setIsConnected] = useState(false)
@@ -55,6 +81,47 @@ export default function DatabaseManager() {
     indexField: '0'
   })
 
+  // NUEVO: Estados para tablas textuales
+  const [createTextModal, setCreateTextModal] = useState<CreateTextIndexModal>({
+    isOpen: false,
+    tableName: '',
+    csvFile: '',
+    textFields: [],
+    language: 'spanish'
+  })
+
+  const [textSearchModal, setTextSearchModal] = useState<TextSearchModal>({
+    isOpen: false,
+    tableName: '',
+    query: '',
+    k: 10,
+    fields: ['*']
+  })
+
+  const [multimediaSearchModal, setMultimediaSearchModal] = useState<MultimediaSearchModal>({
+    isOpen: false,
+    tableName: '',
+    queryFile: null,
+    queryFilePath: '',
+    k: 10,
+    fields: ['*'],
+    method: 'SIFT',
+    mediaType: 'image'
+  })
+
+  // Estados para vista expandida en línea
+  const [expandedMedia, setExpandedMedia] = useState<{
+    type: 'image' | 'audio' | null;
+    path: string;
+    title: string;
+    index: number;
+  }>({
+    type: null,
+    path: '',
+    title: '',
+    index: -1
+  })
+
   const [notifications, setNotifications] = useState<Array<{
     id: string;
     type: 'success' | 'error' | 'info';
@@ -69,14 +136,10 @@ export default function DatabaseManager() {
     return () => clearInterval(interval)
   }, [])
 
-  // Reset página cuando cambia el resultado
   useEffect(() => {
-    console.log('🎯 UseEffect - queryState.result cambió:', queryState.result);
     if (queryState.result) {
       setCurrentPage(1)
       const rows = 'rows' in queryState.result ? queryState.result.rows || [] : []
-      console.log('📊 Filas extraídas:', rows);
-      console.log('📊 Cantidad de filas:', rows.length);
       setTotalRecords(rows.length)
     }
   }, [queryState.result])
@@ -151,23 +214,19 @@ export default function DatabaseManager() {
     setQueryState({ isLoading: true, result: null, error: null, executionTime: 0 })
     
     const startTime = performance.now()
-    console.log('🔍 Ejecutando consulta:', sqlQuery);
     
     const response = await DatabaseAPI.executeSQL(sqlQuery)
-    console.log('📥 Respuesta completa de API:', response);
     
     const endTime = performance.now()
     
     if (response.success && response.data) {
-      console.log('✅ Datos recibidos:', response.data);
-      console.log('📋 Columnas:', response.data.columns);
-      console.log('📊 Filas:', response.data.rows);
-      console.log('📊 Tipo de filas:', typeof response.data.rows);
-      console.log('📊 Es array?:', Array.isArray(response.data.rows));
-      
       setQueryState({
         isLoading: false,
-        result: response.data,
+        result: {
+          ...response.data,
+          query_type: 'text_search',
+          execution_time: (endTime - startTime) / 1000,
+        },
         error: null,
         executionTime: (endTime - startTime) / 1000
       })
@@ -178,7 +237,6 @@ export default function DatabaseManager() {
         loadTables()
       }
     } else {
-      console.log('❌ Error en respuesta:', response);
       setQueryState({
         isLoading: false,
         result: null,
@@ -205,7 +263,11 @@ export default function DatabaseManager() {
     if (response.success && response.data) {
       setQueryState({
         isLoading: false,
-        result: response.data,
+        result: {
+          ...response.data,
+          query_type: 'text_search',
+          execution_time: (endTime - startTime) / 1000,
+        },
         error: null,
         executionTime: (endTime - startTime) / 1000
       })
@@ -255,6 +317,145 @@ export default function DatabaseManager() {
     }
   }
 
+  // NUEVO: Función para crear índice textual
+  const createTextIndex = async () => {
+    if (!createTextModal.tableName || !createTextModal.csvFile || createTextModal.textFields.length === 0) {
+      addNotification('error', 'Completa todos los campos y agrega al menos un campo de texto')
+      return
+    }
+
+    const response = await DatabaseAPI.createTextIndex(
+      createTextModal.tableName,
+      createTextModal.csvFile,
+      createTextModal.textFields,
+      createTextModal.language
+    )
+
+    if (response.success) {
+      addNotification('success', `Índice textual "${createTextModal.tableName}" creado exitosamente`)
+      
+      const newTable: TableInfo = {
+        table_name: createTextModal.tableName,
+        index_type: 'SPIMI',
+        record_count: 0,
+        field_index: 0
+      }
+      
+      setTables(prevTables => [...prevTables, newTable])
+      setSelectedTable(createTextModal.tableName)
+      
+      setCreateTextModal({ 
+        isOpen: false, 
+        tableName: '', 
+        csvFile: '', 
+        textFields: [], 
+        language: 'spanish' 
+      })
+    } else {
+      addNotification('error', response.message || 'Error al crear índice textual')
+    }
+  }
+
+  // NUEVO: Función para búsqueda textual
+  const executeTextSearch = async () => {
+    if (!textSearchModal.tableName || !textSearchModal.query.trim()) {
+      addNotification('error', 'Selecciona una tabla y escribe una consulta')
+      return
+    }
+
+    setQueryState({ isLoading: true, result: null, error: null, executionTime: 0 })
+    
+    const startTime = performance.now()
+    const response = await DatabaseAPI.textSearch(
+      textSearchModal.tableName,
+      textSearchModal.query,
+      textSearchModal.k,
+      textSearchModal.fields
+    )
+    const endTime = performance.now()
+    
+    if (response.success && response.data) {
+      setQueryState({
+        isLoading: false,
+        result: {
+          ...response.data,
+          query_type: 'text_search',
+          execution_time: (endTime - startTime) / 1000,
+        },
+        error: null,
+        executionTime: (endTime - startTime) / 1000
+      })
+      
+      addNotification('success', `Búsqueda textual completada: ${response.data.count} resultados`)
+      setTextSearchModal({ ...textSearchModal, isOpen: false })
+    } else {
+      setQueryState({
+        isLoading: false,
+        result: null,
+        error: response.message || "Error en búsqueda textual",
+        executionTime: (endTime - startTime) / 1000
+      })
+      
+      addNotification('error', response.message || 'Error en búsqueda textual')
+    }
+  }
+
+  // Función para búsqueda multimedia
+  const executeMultimediaSearch = async () => {
+    if (!multimediaSearchModal.tableName || !multimediaSearchModal.queryFilePath.trim()) {
+      addNotification('error', 'Selecciona una tabla y un archivo de consulta')
+      return
+    }
+
+    setQueryState({ isLoading: true, result: null, error: null, executionTime: 0 })
+    
+    const startTime = performance.now()
+    const response = await DatabaseAPI.multimediaSearch(
+      multimediaSearchModal.tableName,
+      multimediaSearchModal.queryFilePath,
+      multimediaSearchModal.k,
+      multimediaSearchModal.fields,
+      multimediaSearchModal.method
+    )
+    const endTime = performance.now()
+    
+    if (response.success && response.data) {
+      setQueryState({
+        isLoading: false,
+        result: {
+          ...response.data,
+          query_type: 'multimedia_search',
+          execution_time: (endTime - startTime) / 1000,
+        },
+        error: null,
+        executionTime: (endTime - startTime) / 1000
+      })
+      
+      addNotification('success', `Búsqueda multimedia completada: ${response.data.count} resultados`)
+      setMultimediaSearchModal({ ...multimediaSearchModal, isOpen: false })
+    } else {
+      setQueryState({
+        isLoading: false,
+        result: null,
+        error: response.message || "Error en búsqueda multimedia",
+        executionTime: (endTime - startTime) / 1000
+      })
+      
+      addNotification('error', response.message || 'Error en búsqueda multimedia')
+    }
+  }
+
+  // Funciones para vista expandida en línea
+  const toggleExpandedMedia = (type: 'image' | 'audio', path: string, title: string, index: number) => {
+    if (expandedMedia.index === index && expandedMedia.type === type) {
+      // Si ya está expandido, colapsarlo
+      setExpandedMedia({ type: null, path: '', title: '', index: -1 })
+    } else {
+      // Expandir el nuevo elemento
+      setExpandedMedia({ type, path, title, index })
+    }
+  }
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -280,6 +481,44 @@ export default function DatabaseManager() {
     setTotalRecords(0)
   }
 
+  // NUEVO: Funciones para manejar campos de texto
+  const addTextField = () => {
+    const fieldName = (document.getElementById('newTextField') as HTMLInputElement)?.value?.trim()
+    if (fieldName && !createTextModal.textFields.includes(fieldName)) {
+      setCreateTextModal({
+        ...createTextModal,
+        textFields: [...createTextModal.textFields, fieldName]
+      });
+      (document.getElementById('newTextField') as HTMLInputElement).value = ''
+    }
+  }
+
+  const removeTextField = (field: string) => {
+    setCreateTextModal({
+      ...createTextModal,
+      textFields: createTextModal.textFields.filter(f => f !== field)
+    })
+  }
+
+  const addSearchField = () => {
+    const fieldName = (document.getElementById('newSearchField') as HTMLInputElement)?.value?.trim()
+    if (fieldName && !textSearchModal.fields.includes(fieldName)) {
+      setTextSearchModal({
+        ...textSearchModal,
+        fields: textSearchModal.fields.filter(f => f !== '*').concat(fieldName)
+      });
+      (document.getElementById('newSearchField') as HTMLInputElement).value = ''
+    }
+  }
+
+  const removeSearchField = (field: string) => {
+    const newFields = textSearchModal.fields.filter(f => f !== field)
+    setTextSearchModal({
+      ...textSearchModal,
+      fields: newFields.length === 0 ? ['*'] : newFields
+    })
+  }
+
   // ========== RENDER HELPERS ==========
 
   const getIndexIcon = (indexType: string) => {
@@ -288,7 +527,9 @@ export default function DatabaseManager() {
       'isam': Building,
       'hash': Hash,
       'btree': TreePine,
-      'rtree': MapPin
+      'rtree': MapPin,
+      'SPIMI': BookOpen,
+      'textual': MessageSquare
     }
     const IconComponent = icons[indexType] || Grid3X3
     return <IconComponent className="w-4 h-4" />
@@ -391,46 +632,302 @@ export default function DatabaseManager() {
     )
   }
 
-  const renderResultTable = () => {
-    console.log('🎨 Renderizando tabla - queryState.result:', queryState.result);
+  const renderMultimediaResults = (columns: string[], paginatedRows: any[][], startIndex: number, endIndex: number) => {
+    const imagePathIndex = columns.findIndex(col => col.includes('image_path'));
+    const audioPathIndex = columns.findIndex(col => col.includes('audio_path'));
+    const filenameIndex = columns.findIndex(col => col.includes('filename'));
+    const similarityIndex = columns.findIndex(col => col.includes('similarity') || col.includes('distance'));
     
+    // Determinar tipo de búsqueda basado en la consulta SQL o estructura de datos
+    const lastQuery = sqlQuery || '';
+    const queryFileMatch = lastQuery.match(/WHERE\s+\w+\s+<->\s+["']([^"']+)["']/i);
+    const queryFilePath = queryFileMatch ? queryFileMatch[1] : '';
+    
+    // Determinar tipo de búsqueda
+    let isImageSearch = imagePathIndex !== -1;
+    let isAudioSearch = audioPathIndex !== -1;
+    
+    // Si no tenemos columnas de path definidas, inferir del contenido
+    if (!isImageSearch && !isAudioSearch) {
+      // Inferir del archivo de consulta
+      if (queryFilePath) {
+        isImageSearch = /\.(jpg|jpeg|png|gif|bmp)$/i.test(queryFilePath);
+        isAudioSearch = /\.(mp3|wav|m4a|flac)$/i.test(queryFilePath);
+      }
+      // Si aún no sabemos, inferir del primer filename o image_path disponible
+      if (!isImageSearch && !isAudioSearch && paginatedRows.length > 0) {
+        const firstRow = paginatedRows[0];
+        if (imagePathIndex !== -1 && firstRow[imagePathIndex]) {
+          isImageSearch = true;
+        } else if (audioPathIndex !== -1 && firstRow[audioPathIndex]) {
+          isAudioSearch = true;
+        } else if (filenameIndex !== -1) {
+          const firstFilename = firstRow[filenameIndex];
+          isImageSearch = /\.(jpg|jpeg|png|gif|bmp)$/i.test(firstFilename);
+          isAudioSearch = /\.(mp3|wav|m4a|flac)$/i.test(firstFilename);
+        }
+      }
+    }
+
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex-1 overflow-auto p-4">
+          {/* Header con información de búsqueda y archivo de consulta */}
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  {isImageSearch ? <Image className="w-5 h-5 text-blue-600" /> : <Music className="w-5 h-5 text-blue-600" />}
+                  <h3 className="text-lg font-semibold text-blue-800">
+                    Resultados de búsqueda {isImageSearch ? 'de imágenes' : 'de audio'}
+                  </h3>
+                </div>
+                <p className="text-blue-700 text-sm">
+                  {paginatedRows.length} resultados mostrados, ordenados por similitud
+                </p>
+              </div>
+              
+              {/* Preview del archivo de consulta */}
+              {queryFilePath && (
+                <div className="flex-shrink-0">
+                  <p className="text-xs font-medium text-blue-700 mb-2">Archivo de consulta:</p>
+                  {isImageSearch ? (
+                    <div className="w-24 h-24 bg-white rounded border border-blue-200">
+                      <img 
+                        src={`/${queryFilePath}`}
+                        alt="Consulta"
+                        className="w-full h-full object-contain rounded"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+
+                        }}
+                      />
+                      <div style={{display: 'none'}} className="w-full h-full flex flex-col items-center justify-center text-blue-400">
+                        <Image className="w-6 h-6 mb-1" />
+                        <span className="text-xs">No disponible</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white p-2 rounded border border-blue-200 max-w-48">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Music className="w-4 h-4 text-blue-600" />
+                        <span className="text-xs text-blue-700 font-medium">Archivo consultado</span>
+                      </div>
+                      <audio controls className="w-full h-8" style={{height: '32px'}}>
+                        <source src={`/${queryFilePath}`} />
+                        Audio no disponible
+                      </audio>
+                    </div>
+                  )}
+                  <p className="text-xs text-blue-600 mt-1 break-all max-w-48">{queryFilePath}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Lista de resultados multimedia */}
+          <div className="space-y-4">
+            {paginatedRows.map((row, rowIndex) => {
+              // Obtener la ruta del archivo multimedia
+              let mediaPath = '';
+              
+              // Priorizar rutas completas disponibles
+              if (imagePathIndex !== -1 && row[imagePathIndex]) {
+                mediaPath = row[imagePathIndex];
+                isImageSearch = true;
+              } else if (audioPathIndex !== -1 && row[audioPathIndex]) {
+                mediaPath = row[audioPathIndex];
+                isAudioSearch = true;
+              } else if (filenameIndex !== -1) {
+                const filename = row[filenameIndex];
+                // Construir ruta basada en el tipo de archivo inferido
+                if (isImageSearch) {
+                  mediaPath = `datos/fashion-dataset/images/${filename}`;
+                } else if (isAudioSearch) {
+                  mediaPath = `datos/fma_medium/000/${filename}`;
+                } else {
+                  mediaPath = filename; // fallback
+                }
+              }
+              
+              const similarity = similarityIndex !== -1 ? row[similarityIndex] : null;
+              const currentIndex = startIndex + rowIndex;
+              const isExpanded = expandedMedia.index === currentIndex;
+              
+              return (
+                <div key={currentIndex} className="bg-white rounded-lg shadow-md border border-slate-200 overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-start gap-4">
+                      {/* Thumbnail/Preview pequeño */}
+                      <div className="flex-shrink-0">
+                        {isImageSearch ? (
+                          <div className="w-20 h-20 bg-slate-100 rounded border flex items-center justify-center">
+                            <img 
+                              src={`/${mediaPath}`} 
+                              alt="Thumbnail"
+                              className="max-w-full max-h-full object-contain rounded"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+
+                              }}
+                            />
+                            <div style={{display: 'none'}} className="flex flex-col items-center justify-center text-slate-400">
+                              <Image className="w-6 h-6" />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-20 h-20 bg-slate-100 rounded border flex items-center justify-center">
+                            <Music className="w-8 h-8 text-slate-400" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Metadata */}
+                      <div className="flex-1 min-w-0">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+                          {columns.map((column, colIndex) => {
+                            // Skip path columns, filename and similarity as they're shown elsewhere
+                            if (colIndex === imagePathIndex || colIndex === audioPathIndex || colIndex === filenameIndex || colIndex === similarityIndex) {
+                              return null;
+                            }
+
+                            const value = row[colIndex];
+                            if (!value || value === '') return null;
+
+                            return (
+                              <div key={colIndex} className="min-w-0">
+                                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
+                                  {column}:
+                                </span>
+                                <span className="text-sm text-slate-800 block truncate">
+                                  {String(value)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {similarity !== null && (
+                              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                                {(parseFloat(similarity) * 100).toFixed(1)}% similar
+                              </span>
+                            )}
+                            <span className="text-xs text-slate-400">
+                              📁 {filenameIndex !== -1 ? row[filenameIndex] : mediaPath}
+                            </span>
+                          </div>
+                          
+                          <button
+                            onClick={() => {
+                              const title = row[columns.findIndex(col => col.includes('productDisplayName') || col.includes('title') || col.includes('track_name'))] || 
+                                          (isImageSearch ? 'Imagen' : 'Audio');
+                              toggleExpandedMedia(isImageSearch ? 'image' : 'audio', mediaPath, String(title), currentIndex);
+                            }}
+                            className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                              isExpanded 
+                                ? 'bg-slate-200 text-slate-700 hover:bg-slate-300' 
+                                : (isImageSearch ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-green-600 text-white hover:bg-green-700')
+                            }`}
+                          >
+                            {isImageSearch ? <Camera className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                            {isExpanded ? 'Ocultar' : (isImageSearch ? 'Ver imagen' : 'Reproducir')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Vista expandida en línea */}
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-slate-200">
+                        {isImageSearch ? (
+                          <div className="max-w-2xl mx-auto">
+                            <img 
+                              src={`/${mediaPath}`}
+                              alt={expandedMedia.title}
+                              className="w-full h-auto max-h-96 object-contain rounded-lg shadow-lg"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+
+                              }}
+                            />
+                            <div style={{display: 'none'}} className="w-full h-48 flex flex-col items-center justify-center text-slate-400 bg-slate-100 rounded-lg">
+                              <Image className="w-12 h-12 mb-2" />
+                              <span>Imagen no disponible</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="max-w-md mx-auto p-4 bg-slate-50 rounded-lg">
+                            <div className="flex items-center gap-3 mb-3">
+                              <Headphones className="w-6 h-6 text-slate-600" />
+                              <span className="font-medium text-slate-700">{expandedMedia.title}</span>
+                            </div>
+                            <audio 
+                              controls 
+                              className="w-full"
+                              autoPlay
+                            >
+                              <source src={`/${mediaPath}`} type="audio/mpeg" />
+                              <source src={`/${mediaPath}`} type="audio/wav" />
+                              <source src={`/${mediaPath}`} type="audio/mp4" />
+                              Tu navegador no soporta el elemento de audio.
+                            </audio>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        {renderPaginationControls()}
+      </div>
+    );
+  };
+
+  const renderResultTable = () => {
     if (!queryState.result) {
-      console.log('❌ No hay queryState.result');
       return null;
     }
 
     const columns = queryState.result.columns || []
     const allRows: Array<any[]> = 'rows' in queryState.result ? queryState.result.rows || [] : []
 
-    console.log('📋 Columnas extraídas:', columns);
-    console.log('📊 Filas extraídas:', allRows);
-    console.log('📊 Cantidad de filas:', allRows.length);
-    console.log('📊 Primera fila:', allRows[0]);
-
     if (allRows.length === 0) {
-      console.log('❌ allRows.length === 0, mostrando "No se encontraron resultados"');
       return (
         <div className="flex items-center justify-center h-full">
           <div className="text-center text-slate-500">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg">No se encontraron resultados</p>
-            <p className="text-sm mt-2 text-red-500">Debug: allRows.length = {allRows.length}</p>
           </div>
         </div>
       )
     }
+
+    // Detectar si es resultado multimedia
+    const isMultimediaResult = ('query_type' in (queryState.result || {}) && (queryState.result as QueryResult).query_type === 'multimedia_search') || 
+                              columns.some(col => col.includes('image_path') || col.includes('audio_path') || col.includes('filename')) ||
+                              sqlQuery.includes('<->');
 
     // Aplicar paginación
     const startIndex = (currentPage - 1) * recordsPerPage
     const endIndex = startIndex + recordsPerPage
     const paginatedRows = allRows.slice(startIndex, endIndex)
 
-    console.log('📄 Filas paginadas:', paginatedRows);
-    console.log('📄 Cantidad paginada:', paginatedRows.length);
+    // Renderizar vista especial para multimedia
+    if (isMultimediaResult) {
+      return renderMultimediaResults(columns, paginatedRows, startIndex, endIndex);
+    }
 
     return (
       <div className="flex flex-col h-full">
-        {/* Tabla con scroll limitado */}
         <div className="flex-1 overflow-auto">
           <table className="w-full">
             <thead className="bg-slate-50/80 sticky top-0 z-10">
@@ -462,7 +959,6 @@ export default function DatabaseManager() {
           </table>
         </div>
         
-        {/* Controles de paginación */}
         {renderPaginationControls()}
       </div>
     )
@@ -471,6 +967,23 @@ export default function DatabaseManager() {
   const filteredTables = tables.filter(table => 
     table.table_name.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  // NUEVO: Filtrar tablas textuales
+  const textualTables = filteredTables.filter(table => 
+    table.index_type === 'SPIMI' || table.index_type === 'textual'
+  )
+
+  // NUEVO: Función para insertar consulta textual de ejemplo
+  const insertTextSearchQuery = (tableName: string) => {
+    const exampleQueries = [
+      `SELECT * FROM ${tableName} WHERE lyrics @@ "love song" LIMIT 10;`,
+      `SELECT track_name, track_artist FROM ${tableName} WHERE lyrics @@ "rock music" LIMIT 5;`,
+      `SELECT * FROM ${tableName} WHERE combined_text @@ "dance party" LIMIT 8;`
+    ]
+    
+    const randomQuery = exampleQueries[Math.floor(Math.random() * exampleQueries.length)]
+    setSqlQuery(randomQuery)
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex">
@@ -509,7 +1022,7 @@ export default function DatabaseManager() {
             <div>
               <h1 className="font-bold text-lg">BDII Manager</h1>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-blue-100">Proyecto 1</span>
+                <span className="text-blue-100">Con Búsqueda Textual</span>
                 <div className={`w-2 h-2 rounded-full ${getConnectionStatusColor()}`} />
                 <span className="text-xs text-blue-100">
                   {getConnectionStatusText()}
@@ -532,15 +1045,49 @@ export default function DatabaseManager() {
             />
           </div>
           
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setCreateModal({ ...createModal, isOpen: true })}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
             >
               <Plus className="w-4 h-4" />
-              Nueva Tabla
+              Tabla
             </button>
             
+            <button
+              onClick={() => setCreateTextModal({ ...createTextModal, isOpen: true })}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
+            >
+              <Type className="w-4 h-4" />
+              Textual
+            </button>
+          </div>
+
+          {/* NUEVO: Sección de búsqueda textual */}
+          {textualTables.length > 0 && (
+            <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-medium text-purple-800">Búsqueda Textual</span>
+              </div>
+              <button
+                onClick={() => setTextSearchModal({ ...textSearchModal, isOpen: true })}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
+              >
+                <Zap className="w-4 h-4" />
+                Buscar Texto
+              </button>
+              <button
+                onClick={() => setMultimediaSearchModal({ ...multimediaSearchModal, isOpen: true })}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                <Image className="w-4 h-4" />
+                Buscar Multimedia
+              </button>
+            </div>
+          )}
+
+          <div className="flex gap-2">
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center justify-center gap-2 px-3 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
@@ -558,7 +1105,6 @@ export default function DatabaseManager() {
             />
           </div>
 
-          {/* Controles adicionales */}
           {tables.length === 0 ? (
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
               <p className="text-xs text-slate-600 mb-2">Panel limpio - Solo verás las tablas que crees</p>
@@ -567,7 +1113,7 @@ export default function DatabaseManager() {
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
               >
                 <Search className="w-3 h-3" />
-                Cargar Tablas Existentes del Servidor
+                Cargar Tablas del Servidor
               </button>
             </div>
           ) : (
@@ -587,7 +1133,7 @@ export default function DatabaseManager() {
                   addNotification('info', 'Vista limpiada')
                 }}
                 className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                title="Limpiar vista (no afecta el servidor)"
+                title="Limpiar vista"
               >
                 <X className="w-3 h-3" />
                 Limpiar
@@ -598,16 +1144,21 @@ export default function DatabaseManager() {
 
         {/* Tables */}
         <div className="px-4 pb-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
-              Tablas ({filteredTables.length})
-            </h3>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-1">
+                Mis Tablas
+              </h3>
+              <p className="text-xs text-slate-500">
+                {filteredTables.length} tabla{filteredTables.length !== 1 ? 's' : ''} disponible{filteredTables.length !== 1 ? 's' : ''}
+              </p>
+            </div>
             <button
               onClick={loadTables}
-              className="p-1 hover:bg-slate-200 rounded-lg transition-colors"
-              title="Recargar tablas"
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors group"
+              title="Sincronizar con servidor"
             >
-              <RotateCcw className="w-3 h-3 text-slate-500" />
+              <RotateCcw className="w-4 h-4 text-slate-500 group-hover:text-blue-500 transition-colors" />
             </button>
           </div>
           
@@ -630,27 +1181,73 @@ export default function DatabaseManager() {
                   {getIndexIcon(table.index_type)}
                 </div>
                 <div className="flex-1 text-left">
-                  <div className="font-medium">{table.table_name}</div>
-                  <div className={`text-xs ${
+                  <div className="font-medium truncate">{table.table_name}</div>
+                  <div className={`text-xs mt-1 ${
                     selectedTable === table.table_name ? "text-blue-100" : "text-slate-500"
                   }`}>
-                    {table.record_count?.toLocaleString() || 0} registros • {DatabaseAPI.getIndexTypeLabel(table.index_type)}
+                    <div className="flex items-center gap-1">
+                      <span className="font-medium">{table.record_count?.toLocaleString() || 0}</span>
+                      <span>registros</span>
+                    </div>
+                    <div className="text-xs opacity-75 mt-0.5">
+                      {DatabaseAPI.getIndexTypeLabel(table.index_type)}
+                    </div>
                   </div>
                 </div>
+                {/* NUEVO: Indicador especial para tablas textuales */}
+                {(table.index_type === 'SPIMI' || table.index_type === 'textual') && (
+                  <div className={`p-1 rounded ${
+                    selectedTable === table.table_name ? "bg-white/20" : "bg-purple-100"
+                  }`}>
+                    <MessageSquare className={`w-3 h-3 ${
+                      selectedTable === table.table_name ? "text-white" : "text-purple-600"
+                    }`} />
+                  </div>
+                )}
+                {/* NUEVO: Botón de búsqueda rápida para tablas textuales */}
+                {(table.index_type === 'SPIMI' || table.index_type === 'textual') && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      insertTextSearchQuery(table.table_name)
+                    }}
+                    className={`p-1 rounded transition-colors ${
+                      selectedTable === table.table_name 
+                        ? "hover:bg-white/20" 
+                        : "hover:bg-purple-200"
+                    }`}
+                    title="Insertar consulta de ejemplo"
+                  >
+                    <Zap className={`w-3 h-3 ${
+                      selectedTable === table.table_name ? "text-white" : "text-purple-600"
+                    }`} />
+                  </button>
+                )}
               </button>
             ))}
           </div>
           
           {filteredTables.length === 0 && (
-            <div className="text-center py-8 text-slate-500">
-              <Database className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No hay tablas disponibles</p>
-              <button
-                onClick={() => setCreateModal({ ...createModal, isOpen: true })}
-                className="mt-2 text-blue-500 hover:text-blue-600 text-sm underline"
-              >
-                Crear primera tabla
-              </button>
+            <div className="text-center py-6 px-4 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+              <Database className="w-10 h-10 mx-auto mb-3 text-slate-400" />
+              <h4 className="text-sm font-medium text-slate-700 mb-1">¡Comienza aquí!</h4>
+              <p className="text-xs text-slate-500 mb-4">Crea tu primera tabla para comenzar</p>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setCreateModal({ ...createModal, isOpen: true })}
+                  className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tabla Tradicional
+                </button>
+                <button
+                  onClick={() => setCreateTextModal({ ...createTextModal, isOpen: true })}
+                  className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
+                >
+                  <Type className="w-4 h-4" />
+                  Índice Textual
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -680,13 +1277,21 @@ export default function DatabaseManager() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* SQL Editor - Fixed height */}
         <div className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/60 p-6 flex-shrink-0">
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">Editor SQL</h2>
-            <p className="text-slate-600 text-sm">
-              Ejecuta consultas SQL personalizadas o explora la tabla{" "}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xl font-bold text-slate-800">Editor SQL</h2>
               {selectedTable && (
-                <span className="font-medium text-blue-600">{selectedTable}</span>
+                <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Database className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-700">{selectedTable}</span>
+                </div>
               )}
+            </div>
+            <p className="text-slate-600 text-sm">
+              Ejecuta consultas SQL tradicionales, búsquedas textuales con{" "}
+              <code className="bg-slate-100 px-2 py-1 rounded text-purple-600 font-medium">@@</code>, o{" "}
+              búsquedas multimedia con{" "}
+              <code className="bg-slate-100 px-2 py-1 rounded text-blue-600 font-medium">&lt;-&gt;</code>
             </p>
           </div>
           
@@ -694,11 +1299,20 @@ export default function DatabaseManager() {
             <textarea
               value={sqlQuery}
               onChange={(e) => setSqlQuery(e.target.value)}
+              onKeyDown={(e) => {
+                // Prevenir ejecución automática con Enter
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                }
+              }}
               className="w-full h-32 p-4 border border-slate-200 rounded-xl font-mono text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none shadow-sm"
-              placeholder="Escribe tu consulta SQL aquí...&#10;Ejemplos:&#10;• select * from students where math_score > 80&#10;• create table test from file 'datos/data.csv' using index btree('0')&#10;• insert into students values ('999', 'Juan', 'male', 'group A', '85', '90', '88')"
+              placeholder="Escribe tu consulta SQL aquí y presiona 'Ejecutar' para ejecutarla...&#10;&#10;Ejemplos:&#10;• SELECT * FROM fashion WHERE image_sim &lt;-&gt; 'ruta/imagen.jpg' LIMIT 5;&#10;• SELECT * FROM fma WHERE audio_sim &lt;-&gt; 'ruta/audio.mp3' LIMIT 5;&#10;• CREATE MULTIMEDIA TABLE fashion FROM FILE 'datos/fashion_demo_100.csv' USING image WITH METHOD sift CLUSTERS 64;&#10;• CREATE MULTIMEDIA TABLE fma FROM FILE 'datos/fma_demo_100.csv' USING audio WITH METHOD mfcc CLUSTERS 64;"
             />
             <div className="absolute bottom-3 right-3 flex gap-1">
               <span className="px-2 py-1 bg-slate-200 text-slate-600 text-xs rounded-md font-mono">SQL</span>
+              {sqlQuery.includes('@@') && (
+                <span className="px-2 py-1 bg-purple-200 text-purple-700 text-xs rounded-md font-mono">TEXTUAL</span>
+              )}
             </div>
           </div>
 
@@ -727,6 +1341,27 @@ export default function DatabaseManager() {
               <Grid3X3 className="w-4 h-4" />
               <span className="font-medium">Explorar Tabla</span>
             </button>
+
+            {/* NUEVO: Botón de búsqueda textual */}
+            {textualTables.length > 0 && (
+              <button
+                onClick={() => setTextSearchModal({ ...textSearchModal, isOpen: true })}
+                disabled={queryState.isLoading || !isConnected}
+                className="flex items-center gap-2 border border-purple-200 text-purple-700 px-6 py-3 rounded-xl hover:bg-purple-50 hover:border-purple-300 transition-all duration-200 bg-white/60 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span className="font-medium">Búsqueda Textual</span>
+              </button>
+            )}
+            
+            <button
+              onClick={() => setMultimediaSearchModal({ ...multimediaSearchModal, isOpen: true })}
+              disabled={queryState.isLoading || !isConnected}
+              className="flex items-center gap-2 border border-blue-200 text-blue-700 px-6 py-3 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 bg-white/60 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Image className="w-4 h-4" />
+              <span className="font-medium">Búsqueda Multimedia</span>
+            </button>
             
             <button 
               onClick={clearQuery}
@@ -736,66 +1371,134 @@ export default function DatabaseManager() {
               <span className="font-medium">Limpiar</span>
             </button>
           </div>
+
+          {/* NUEVO: Consultas de ejemplo para tablas textuales */}
+          {textualTables.length > 0 && (
+            <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-medium text-purple-800">Consultas de Ejemplo - Búsqueda Textual</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSqlQuery("SELECT * FROM musica WHERE lyrics @@ 'love song' LIMIT 10;")}
+                  className="px-3 py-1 bg-white text-purple-700 text-xs rounded-lg hover:bg-purple-100 transition-colors border border-purple-200"
+                >
+                  Buscar por letra
+                </button>
+                <button
+                  onClick={() => setSqlQuery("SELECT track_name, track_artist FROM musica WHERE combined_text @@ 'rock metal' LIMIT 5;")}
+                  className="px-3 py-1 bg-white text-purple-700 text-xs rounded-lg hover:bg-purple-100 transition-colors border border-purple-200"
+                >
+                  Buscar género
+                </button>
+                <button
+                  onClick={() => setSqlQuery("CREATE TABLE songs FROM FILE 'datos/spotify_songs.csv' USING INDEX spimi('track_name', 'track_artist');")}
+                  className="px-3 py-1 bg-white text-purple-700 text-xs rounded-lg hover:bg-purple-100 transition-colors border border-purple-200"
+                >
+                  Crear índice textual
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Results - Flexible height with scroll */}
         <div className="flex-1 p-6 overflow-hidden">
           {/* Status Bar */}
-          <div className="mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 px-6 py-3 rounded-xl backdrop-blur-sm">
-            <div className="flex justify-between items-center text-sm">
+          <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 px-6 py-4 rounded-xl backdrop-blur-sm">
+            <div className="flex justify-between items-center">
               <div className="flex items-center gap-4">
-                <span className="text-blue-700 font-medium flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${getConnectionStatusColor()}`}></div>
-                  {isConnected ? `API: ${getConnectionStatusText()}` : 'API: Desconectado'}
-                </span>
-                {selectedTable && (
-                  <span className="text-blue-600">Tabla: {selectedTable}</span>
-                )}
-                {queryState.result && totalRecords > 0 && (
-                  <span className="text-blue-600">
-                    Página {currentPage} de {totalPages} ({totalRecords.toLocaleString()} registros totales)
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${getConnectionStatusColor()}`}></div>
+                  <span className="text-blue-700 font-medium text-sm">
+                    {isConnected ? getConnectionStatusText() : 'Desconectado'}
                   </span>
+                </div>
+                
+                {selectedTable && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-white/60 rounded-lg border border-blue-200">
+                    <Database className="w-4 h-4 text-blue-600" />
+                    <span className="text-blue-700 font-medium text-sm">{selectedTable}</span>
+                  </div>
+                )}
+                
+                {queryState.result && totalRecords > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-white/60 rounded-lg border border-blue-200">
+                    <Grid3X3 className="w-4 h-4 text-blue-600" />
+                    <span className="text-blue-700 text-sm">
+                      Página {currentPage} de {totalPages} • {totalRecords.toLocaleString()} total
+                    </span>
+                  </div>
                 )}
               </div>
-              <div className="flex items-center gap-4 text-blue-600">
+              
+              <div className="flex items-center gap-3">
                 {queryState.executionTime > 0 && (
-                  <>
-                    <span>Tiempo: {DatabaseAPI.formatExecutionTime(queryState.executionTime)}</span>
-                    <span>•</span>
-                  </>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-white/60 rounded-lg border border-blue-200">
+                    <span className="text-blue-700 text-sm font-medium">
+                      {DatabaseAPI.formatExecutionTime(queryState.executionTime)}
+                    </span>
+                  </div>
                 )}
-                <span className={`font-medium ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-                  {isConnected ? 'Ready' : 'Offline'}
-                </span>
+                <div className={`px-3 py-1 rounded-lg font-medium text-sm ${
+                  isConnected 
+                    ? 'bg-green-50 border border-green-200 text-green-700' 
+                    : 'bg-red-50 border border-red-200 text-red-700'
+                }`}>
+                  {isConnected ? 'Conectado' : 'Desconectado'}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Results Table Container with fixed height and scroll */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-200/60 overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 400px)' }}>
-            <div className="p-6 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-slate-100 flex-shrink-0">
+            <div className="p-4 border-b border-slate-200/60 bg-gradient-to-r from-slate-50 to-slate-100 flex-shrink-0">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800">Resultados</h3>
-                  <p className="text-slate-600 text-sm">
-                    {selectedTable ? `Tabla: ${selectedTable}` : 'Selecciona una tabla'}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <Grid3X3 className="w-5 h-5 text-slate-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">Resultados</h3>
+                    <p className="text-slate-500 text-sm">
+                      {selectedTable ? (
+                        <span className="flex items-center gap-2">
+                          <Database className="w-3 h-3" />
+                          {selectedTable}
+                        </span>
+                      ) : (
+                        'Selecciona una tabla para comenzar'
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-slate-600">
+                
+                <div className="flex items-center gap-3">
+                  {/* Status indicators */}
+                  {sqlQuery.includes('@@') && (
+                    <div className="px-3 py-1 bg-purple-100 border border-purple-200 rounded-lg">
+                      <span className="text-purple-700 text-xs font-medium">Búsqueda Textual</span>
+                    </div>
+                  )}
+                  
                   {queryState.error ? (
-                    <div className="flex items-center gap-2 text-red-600">
-                      <AlertCircle className="w-4 h-4" />
-                      Error en consulta
+                    <div className="flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded-lg">
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <span className="text-red-600 text-sm font-medium">Error</span>
                     </div>
                   ) : queryState.result ? (
-                    <div className="flex items-center gap-2 text-green-600">
-                      <CheckCircle className="w-4 h-4" />
-                      {totalRecords.toLocaleString()} registros totales
+                    <div className="flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-200 rounded-lg">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span className="text-green-600 text-sm font-medium">
+                        {totalRecords.toLocaleString()} registro{totalRecords !== 1 ? 's' : ''}
+                      </span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg">
                       <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-                      Listo para consultas
+                      <span className="text-slate-600 text-sm">Listo</span>
                     </div>
                   )}
                 </div>
@@ -832,8 +1535,9 @@ export default function DatabaseManager() {
                       Ejecuta una consulta SQL o explora una tabla para ver los resultados aquí
                     </p>
                     <div className="space-y-2 text-xs text-slate-400">
-                      <p>💡 Tip: Usa "select * from {selectedTable || 'tabla'}" para ver todos los registros</p>
-                      <p>🚀 Soporta 5 tipos de índices: Sequential, ISAM, Hash, B+Tree, R-Tree</p>
+                      <p>💡 Tip: Usa "SELECT * FROM tabla" para ver todos los registros</p>
+                      <p>🔍 Nuevo: Usa "SELECT * FROM tabla WHERE campo @@ 'consulta'" para búsqueda textual</p>
+                      <p>🚀 Soporta índices: Sequential, ISAM, Hash, B+Tree, R-Tree, SPIMI</p>
                       <p>📊 Los resultados se paginarán automáticamente en grupos de 100 registros</p>
                     </div>
                   </div>
@@ -844,7 +1548,481 @@ export default function DatabaseManager() {
         </div>
       </div>
 
-      {/* Create Table Modal */}
+      {/* NUEVO: Modal para crear índice textual */}
+      {createTextModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <BookOpen className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800">Crear Índice Textual SPIMI</h3>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Para búsqueda semántica con TF-IDF
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Nombre de la tabla
+                </label>
+                <input
+                  type="text"
+                  value={createTextModal.tableName}
+                  onChange={(e) => setCreateTextModal({...createTextModal, tableName: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="ej: musica_textual"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Archivo CSV
+                </label>
+                <input
+                  type="text"
+                  value={createTextModal.csvFile}
+                  onChange={(e) => setCreateTextModal({...createTextModal, csvFile: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="datos/spotify_songs.csv"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Idioma
+                </label>
+                <select
+                  value={createTextModal.language}
+                  onChange={(e) => setCreateTextModal({...createTextModal, language: e.target.value as 'spanish' | 'english'})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="spanish">🇪🇸 Español</option>
+                  <option value="english">🇺🇸 English</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Campos de texto para indexar
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    id="newTextField"
+                    type="text"
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="nombre_campo"
+                    onKeyPress={(e) => e.key === 'Enter' && addTextField()}
+                  />
+                  <button
+                    onClick={addTextField}
+                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {createTextModal.textFields.map((field, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg">
+                      <MessageSquare className="w-4 h-4 text-purple-600" />
+                      <span className="flex-1 text-sm">{field}</span>
+                      <button
+                        onClick={() => removeTextField(field)}
+                        className="p-1 hover:bg-purple-200 rounded"
+                      >
+                        <X className="w-3 h-3 text-purple-600" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                {createTextModal.textFields.length === 0 && (
+                  <p className="text-xs text-slate-500 mt-2">
+                    Ejemplo: lyrics, track_name, track_artist
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-slate-200 flex gap-3">
+              <button
+                onClick={() => setCreateTextModal({...createTextModal, isOpen: false})}
+                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={createTextIndex}
+                disabled={createTextModal.textFields.length === 0}
+                className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Crear Índice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NUEVO: Modal para búsqueda textual */}
+      {textSearchModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="p-6 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Zap className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800">Búsqueda Textual</h3>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Buscar usando similitud TF-IDF
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Tabla textual
+                </label>
+                <select
+                  value={textSearchModal.tableName}
+                  onChange={(e) => setTextSearchModal({...textSearchModal, tableName: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Seleccionar tabla...</option>
+                  {textualTables.map((table) => (
+                    <option key={table.table_name} value={table.table_name}>
+                      {table.table_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Consulta de búsqueda
+                </label>
+                <input
+                  type="text"
+                  value={textSearchModal.query}
+                  onChange={(e) => setTextSearchModal({...textSearchModal, query: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="love song romantic music"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Ejemplo: "rock music", "love song", "acoustic guitar"
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Número de resultados (K)
+                </label>
+                <input
+                  type="number"
+                  value={textSearchModal.k}
+                  onChange={(e) => setTextSearchModal({...textSearchModal, k: parseInt(e.target.value) || 10})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  min="1"
+                  max="100"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Campos a mostrar
+                </label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    id="newSearchField"
+                    type="text"
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="nombre_campo"
+                    onKeyPress={(e) => e.key === 'Enter' && addSearchField()}
+                  />
+                  <button
+                    onClick={addSearchField}
+                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="flex flex-wrap gap-1">
+                  {textSearchModal.fields.map((field, index) => (
+                    <span
+                      key={index}
+                      className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full"
+                    >
+                      {field}
+                      {field !== '*' && (
+                        <button
+                          onClick={() => removeSearchField(field)}
+                          className="hover:bg-purple-200 rounded-full"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-slate-200 flex gap-3">
+              <button
+                onClick={() => setTextSearchModal({...textSearchModal, isOpen: false})}
+                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executeTextSearch}
+                disabled={!textSearchModal.tableName || !textSearchModal.query.trim()}
+                className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Buscar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para búsqueda multimedia */}
+      {multimediaSearchModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+            <div className="p-6 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Image className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800">Búsqueda Multimedia</h3>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Buscar por similitud visual o de audio
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Tabla multimedia
+                </label>
+                <select
+                  value={multimediaSearchModal.tableName}
+                  onChange={(e) => setMultimediaSearchModal({...multimediaSearchModal, tableName: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Seleccionar tabla...</option>
+                  <option value="fashion">fashion (imágenes)</option>
+                  <option value="fma">fma (audio)</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Tipo de media
+                </label>
+                <div className="flex gap-3">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="image"
+                      checked={multimediaSearchModal.mediaType === 'image'}
+                      onChange={(e) => setMultimediaSearchModal({
+                        ...multimediaSearchModal, 
+                        mediaType: e.target.value as 'image' | 'audio',
+                        method: e.target.value === 'image' ? 'SIFT' : 'MFCC'
+                      })}
+                      className="mr-2"
+                    />
+                    <Image className="w-4 h-4 mr-1" />
+                    Imagen
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="audio"
+                      checked={multimediaSearchModal.mediaType === 'audio'}
+                      onChange={(e) => setMultimediaSearchModal({
+                        ...multimediaSearchModal, 
+                        mediaType: e.target.value as 'image' | 'audio',
+                        method: e.target.value === 'image' ? 'SIFT' : 'MFCC'
+                      })}
+                      className="mr-2"
+                    />
+                    <Music className="w-4 h-4 mr-1" />
+                    Audio
+                  </label>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Método de extracción
+                </label>
+                <select
+                  value={multimediaSearchModal.method}
+                  onChange={(e) => setMultimediaSearchModal({...multimediaSearchModal, method: e.target.value as any})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {multimediaSearchModal.mediaType === 'image' ? (
+                    <>
+                      <option value="SIFT">SIFT (Scale-Invariant Feature Transform)</option>
+                      <option value="ResNet50">ResNet50 (Deep Learning)</option>
+                      <option value="InceptionV3">InceptionV3 (Deep Learning)</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="MFCC">MFCC (Mel-Frequency Cepstral Coefficients)</option>
+                      <option value="Spectrogram">Spectrogram</option>
+                      <option value="Comprehensive">Comprehensive (Múltiples características)</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Archivo de consulta
+                </label>
+                <input
+                  type="text"
+                  value={multimediaSearchModal.queryFilePath}
+                  onChange={(e) => setMultimediaSearchModal({...multimediaSearchModal, queryFilePath: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder={multimediaSearchModal.mediaType === 'image' 
+                    ? "datos/fashion-dataset/images/15970.jpg" 
+                    : "datos/fma_medium/000/000762.mp3"
+                  }
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  {multimediaSearchModal.mediaType === 'image' 
+                    ? "Ejemplo: datos/fashion-dataset/images/15970.jpg" 
+                    : "Ejemplo: datos/fma_medium/000/000762.mp3"
+                  }
+                </p>
+                
+                {/* Preview del archivo de consulta */}
+                {multimediaSearchModal.queryFilePath && (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="text-xs font-medium text-slate-600 mb-2">Vista previa:</p>
+                    {multimediaSearchModal.mediaType === 'image' ? (
+                      <div className="aspect-square max-w-32 bg-white rounded border">
+                        <img 
+                          src={`/${multimediaSearchModal.queryFilePath}`}
+                          alt="Preview de consulta"
+                          className="w-full h-full object-contain rounded"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+
+                          }}
+                        />
+                        <div style={{display: 'none'}} className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                          <Image className="w-8 h-8 mb-1" />
+                          <span className="text-xs">No disponible</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 p-2 bg-white rounded border">
+                        <Music className="w-5 h-5 text-slate-400" />
+                        <div className="flex-1 min-w-0">
+                          <audio 
+                            controls 
+                            className="w-full h-8"
+                            style={{height: '32px'}}
+                          >
+                            <source src={`/${multimediaSearchModal.queryFilePath}`} />
+                            Audio no disponible
+                          </audio>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Número de resultados (K)
+                </label>
+                <input
+                  type="number"
+                  value={multimediaSearchModal.k}
+                  onChange={(e) => setMultimediaSearchModal({...multimediaSearchModal, k: parseInt(e.target.value) || 10})}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                  max="50"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Campos a mostrar
+                </label>
+                <select
+                  multiple
+                  value={multimediaSearchModal.fields}
+                  onChange={(e) => {
+                    const selectedFields = Array.from(e.target.selectedOptions, option => option.value);
+                    setMultimediaSearchModal({...multimediaSearchModal, fields: selectedFields});
+                  }}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"
+                >
+                  <option value="*">Todos los campos</option>
+                  {multimediaSearchModal.mediaType === 'image' ? (
+                    <>
+                      <option value="id">ID</option>
+                      <option value="image_path">Ruta de imagen</option>
+                      <option value="productDisplayName">Nombre del producto</option>
+                      <option value="gender">Género</option>
+                      <option value="masterCategory">Categoría</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="track_id">ID de track</option>
+                      <option value="title">Título</option>
+                      <option value="artist">Artista</option>
+                      <option value="genre">Género</option>
+                      <option value="audio_path">Ruta de audio</option>
+                    </>
+                  )}
+                </select>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-slate-200 flex gap-3">
+              <button
+                onClick={() => setMultimediaSearchModal({...multimediaSearchModal, isOpen: false})}
+                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executeMultimediaSearch}
+                disabled={!multimediaSearchModal.tableName || !multimediaSearchModal.queryFilePath.trim()}
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Buscar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Table Modal (existente) */}
       {createModal.isOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
@@ -930,6 +2108,7 @@ export default function DatabaseManager() {
           </div>
         </div>
       )}
+
     </div>
   )
 }

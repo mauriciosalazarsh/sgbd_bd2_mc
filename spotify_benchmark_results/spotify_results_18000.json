@@ -1,0 +1,1822 @@
+[
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.022257089614868164,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Who's Got Your Love - Mike Williams Remix,Cheat Co",
+      "Strangers,Vigiland,Strangers,edm,0.0998",
+      "Nobody,Local Sound,Nobody,pop,0.0978"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.008060932159423828,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.02051568031311035,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Let's Dance - 1999 Remaster,David Bowie,Let's Danc",
+      "Dance Monkey,Tones and I,Dance Monkey (Stripped Ba",
+      "Hundred Miles,Yall,Hundred Miles,pop,0.1995"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.0003249645233154297,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.020978212356567383,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "All Day and All of the Night,The Kinks,Kinks,rock,",
+      "Every Day - Radio Edit,Eric Prydz,Every Day,edm,0.",
+      "People Crying Every Night,A R I Z O N A,People Cry"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.00032782554626464844,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.02077198028564453,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Just A Lover - Pomo Remix,Hayden James,Just A Love",
+      "Crazy Heart,The Cranberries,In the End,rock,0.1471",
+      "Try Me,James Brown,20 All-Time Greatest Hits!,r&b,"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.0003452301025390625,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.01991581916809082,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Old Time Rock & Roll,Bob Seger,Stranger In Town,ro",
+      "We Will Rock You - Remastered,Queen,News Of The Wo",
+      "Tell It to My Heart,Taylor Dayne,Platinum & Gold C"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.00030684471130371094,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.019585132598876953,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "We Like To Party - Radio Edit,Showtek,We Like To P",
+      "Love's Gonna Get You - Ron Rockwell Remix,Michael ",
+      "This Is How We Party - Cat Dealers Remix,R3HAB,Thi"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.00037980079650878906,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.0198211669921875,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Dream On,Blacktop Mojo,Burn the Ships,rock,0.1861",
+      "On Melancholy Hill,Gorillaz,Plastic Beach,pop,0.14",
+      "Peachy Keen,L Devine,Peachy Keen,pop,0.1362"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.0007297992706298828,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.02089667320251465,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Rocket,Mike Williams,Rocket,edm,0.165",
+      "Make It Right (feat. Lauv),BTS,Make It Right (feat",
+      "Lost At Sea,Dante Klein,Lost At Sea,edm,0.1109"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.0012390613555908203,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.019671916961669922,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Turn Up the Music,Adam Hicks,Lemonade Mouth,pop,0.",
+      "Old Time Rock & Roll,Bob Seger,Stranger In Town,ro",
+      "Won't Live Here,Daniel Caesar,Won't Live Here,r&b,"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.0004057884216308594,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 1000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.020442724227905273,
+    "results_count": 10,
+    "index_build_time": 0.230133056640625,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Keep Going,Syn Cole,Keep Going,edm,0.1387",
+      "BBoom BBoom,MOMOLAND,GREAT!,pop,0.1212",
+      "Crazy Heart,The Cranberries,In the End,rock,0.1154"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 1000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.0003910064697265625,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.049942970275878906,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Get It On,Jenaux,Get It On,edm,0.2181",
+      "DNA,BTS,Love Yourself 承 'Her',pop,0.1458",
+      "New Lover,Foxa,New Lover,latin,0.139"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.0033538341522216797,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.043077945709228516,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Boogie Wonderland,Mr. Belt & Wezol,Boogie Wonderla",
+      "Intoxicated - Original Mix,Martin Solveig,Intoxica",
+      "Dance the Night Away - 2015 Remaster,Van Halen,Van"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.000492095947265625,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.042510986328125,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "The Night King,Graham Bell,The Night King,edm,0.20",
+      "One More Night,Michael Kiwanuka,Love & Hate,r&b,0.",
+      "Save My Night - BlasterJaxx Remix,Armin van Buuren"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.00036907196044921875,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.041204214096069336,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Fireflies,Bassjackers,Fireflies,edm,0.1707",
+      "Genesis,Grimes,Visions,pop,0.163",
+      "Heart,OTR,Heart,pop,0.1512"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.0004227161407470703,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.041227102279663086,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "The Party Has Begun,Freestyle,Don't Stop The Rock,",
+      "Rock And Roll All Nite,KISS,Dressed To Kill (Remas",
+      "Rock Steady,The Whispers,The Whispers: Greatest Hi"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.0003077983856201172,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.039975881576538086,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Party All the Time,Eddie Murphy,How Could It Be,ro",
+      "The Party Has Begun,Freestyle,Don't Stop The Rock,",
+      "Rock And Roll All Nite,KISS,Dressed To Kill (Remas"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.0007569789886474609,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.043233633041381836,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "The Second You Sleep,Saybia,The Second You Sleep,r",
+      "Cause the World Is Small,Brothers Page,Back to You",
+      "Dream On,Blacktop Mojo,Burn the Ships,rock,0.1933"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.00037980079650878906,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.041600942611694336,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Rocket,Mike Williams,Rocket,edm,0.1555",
+      "DNA,BTS,Love Yourself 承 'Her',pop,0.154",
+      "Baby,Bakermat,Baby,latin,0.1183"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.0004589557647705078,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.041152000427246094,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Save My Night - BlasterJaxx Remix,Armin van Buuren",
+      "Turn Up the Music,Adam Hicks,Lemonade Mouth,pop,0.",
+      "American Music,Violent Femmes,Why Do Birds Sing?,r"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.0004329681396484375,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 2000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.041600942611694336,
+    "results_count": 10,
+    "index_build_time": 0.4703559875488281,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "\"I Feel Love - 12\"\" Version\",Donna Summer,Bad Girl",
+      "The Same Way,Don Diablo,The Same Way,edm,0.1412",
+      "Fireflies,Bassjackers,Fireflies,edm,0.1285"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 2000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.0005519390106201172,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.09235620498657227,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Is It Love,3LAU,Is It Love,latin,0.192",
+      "Rush,BROHUG,Rush,edm,0.1865",
+      "Give Me Your Love,Sigala,Give Me Your Love,latin,0"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.006545305252075195,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.08165788650512695,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Solo Dance,Martin Jensen,Solo Dance,latin,0.3362",
+      "Solo Dance - Club Mix,Martin Jensen,Solo Dance - F",
+      "Dance with Me,Orleans,Dance With Me: The Best Of O"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.0004410743713378906,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.08528804779052734,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "28 Grams,Wolfgang Gartner,28 Grams,edm,0.196",
+      "All Night,Example,All Night,edm,0.1652",
+      "Mad Love - Blinkie Remix,Mabel,Mad Love (Remixes),"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.0006120204925537109,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.0840768814086914,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Beat of My Heart (feat. Love Harder),Lost Frequenc",
+      "Fireflies,Bassjackers,Fireflies,edm,0.1657",
+      "Never Be Alone,TheFatRat,Never Be Alone,pop,0.1442"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.0005362033843994141,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.08109283447265625,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "The Party Has Begun,Freestyle,Don't Stop The Rock,",
+      "Tonight I'm Gonna Rock You Tonight,Spinal Tap,This",
+      "Rock the Night,Europe,The Final Countdown (Expande"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.00035691261291503906,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.08058714866638184,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "How We Party,R3HAB,How We Party,edm,0.7544",
+      "We Like To Party,Showtek,We Like To Party,edm,0.63",
+      "I Can't Take It - Party Favor Remix,Dillon Francis"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.000972747802734375,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.09806180000305176,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Another Night,Real McCoy,Ultimate Club Dance 90s -",
+      "The Second You Sleep,Saybia,The Second You Sleep,r",
+      "In Search Of The Peace Of Mind,Scorpions,Lonesome "
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.0004839897155761719,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.0872042179107666,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "What Is Love 2016 - Dimitri Vegas & Like Mike Remi",
+      "Not That Type,gugudan,Act.5 New Action,pop,0.1376",
+      "Forever Love,YOUNGJAE,\"O,on\",pop,0.1363"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.00048804283142089844,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.08046984672546387,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Make Luv,Room 5,Music & You,pop,0.2136",
+      "Get The Funk Out Ma Face,The Brothers Johnson,Look",
+      "Dance with Me,Orleans,Dance With Me: The Best Of O"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.0003681182861328125,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 4000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.08446788787841797,
+    "results_count": 10,
+    "index_build_time": 0.9147830009460449,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Like This,Throttle,Like This,edm,0.3437",
+      "Feel Good,Felix Jaehn,I,pop,0.1984",
+      "No Beef,Afrojack,No Beef,edm,0.1573"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 4000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.0004928112030029297,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.23481416702270508,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Is It Love,3LAU,Is It Love,latin,0.1899",
+      "My Love,Route 94,My Love,pop,0.1794",
+      "I Feel Love,Sam Smith,I Feel Love,pop,0.1644"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.004693031311035156,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.15695595741271973,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "I Wanna Dance,Jonas Blue,I Wanna Dance,pop,0.6109",
+      "Dance X,Gesaffelstein,Novo Sonic System,edm,0.4879",
+      "The Beat,Mike Williams,The Beat,pop,0.3877"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.0007207393646240234,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.1705152988433838,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "One More Night,Michael Kiwanuka,Love & Hate,r&b,0.",
+      "Late Nights,GAWVI,Lost in Hue - EP,edm,0.1624",
+      "You Really Got Me,Van Halen,Van Halen (Reissue),ro"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.0009238719940185547,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.16899991035461426,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Beat of My Heart (feat. Love Harder),Lost Frequenc",
+      "Summer ID,Manse,Summer ID,edm,0.1943",
+      "I Wanna Feel - Radio Edit,Secondcity,I Wanna Feel,"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.0007350444793701172,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.15587401390075684,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "I Wanna Rock,Twisted Sister,Absolute Rock Anthems,",
+      "Swamp Thing,Pegboard Nerds,Swamp Thing,edm,0.3173",
+      "Tattoos,Caravan Palace,<I°_°I>,edm,0.2937"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.00048279762268066406,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.16731691360473633,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "How We Party,R3HAB,How We Party,edm,0.7435",
+      "We Like To Party,Showtek,We Like To Party,edm,0.62",
+      "Burn,KSHMR,Burn,edm,0.3161"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.00038504600524902344,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.15662384033203125,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "I See,Nicky Romero,I See,edm,0.3538",
+      "Rise up - Club mix,Yves Larock,Rise up,edm,0.2203",
+      "Another Night,Real McCoy,Ultimate Club Dance 90s -"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.000408172607421875,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.19454288482666016,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Told You Once,Foxa,Told You Once,edm,0.1743",
+      "ME,CLC,ME,pop,0.1621",
+      "I Wanna Feel - Radio Edit,Secondcity,I Wanna Feel,"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.0017249584197998047,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.15492630004882812,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Don't Fight The Music,Virginia To Vegas,Volume I,p",
+      "Turn Up the Music,Adam Hicks,Lemonade Mouth,pop,0.",
+      "They're Playing Our Song,Trinere,All Night,latin,0"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.0005221366882324219,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 8000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.18979096412658691,
+    "results_count": 10,
+    "index_build_time": 1.7996501922607422,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "I Feel Love,Sam Smith,I Feel Love,pop,0.2273",
+      "Tell Me,Rust,Tell Me (feat. Cozy),pop,0.2222",
+      "Feel Good,Felix Jaehn,I,pop,0.1846"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 8000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.0006971359252929688,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.3588883876800537,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Get It On,Jenaux,Get It On,edm,0.1899",
+      "Is It Love,3LAU,Is It Love,latin,0.1862",
+      "My Love,Route 94,My Love,pop,0.179"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.004655122756958008,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.24960899353027344,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "I Wanna Dance,Jonas Blue,I Wanna Dance,pop,0.609",
+      "Dance X,Gesaffelstein,Novo Sonic System,edm,0.4823",
+      "The Beat,Mike Williams,The Beat,pop,0.3827"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.0009338855743408203,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.2616419792175293,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Crazy Things at Night,Sonny Fodera,Insane,edm,0.28",
+      "I Wanna Rave,Steve Aoki,I Wanna Rave,edm,0.1962",
+      "One More Night,Michael Kiwanuka,Love & Hate,r&b,0."
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.00061798095703125,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.25622010231018066,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Beat of My Heart (feat. Love Harder),Lost Frequenc",
+      "Summer ID,Manse,Summer ID,edm,0.1864",
+      "Rock My Heart - Radio Mix,Haddaway,The Album,pop,0"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.0006148815155029297,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.24868106842041016,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Rock The House,Afrojack,Rock The House,edm,0.6183",
+      "I Wanna Rock,Twisted Sister,Stay Hungry,rock,0.379",
+      "I Wanna Rock (Remastered Album Version),Twisted Si"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.0005600452423095703,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.23043584823608398,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "How We Party,R3HAB,How We Party,edm,0.7459",
+      "How We Party,R3HAB,How We Party,edm,0.7459",
+      "We Like To Party,Showtek,We Like To Party,edm,0.60"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.0005648136138916016,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.24589204788208008,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "I See,Nicky Romero,I See,edm,0.3667",
+      "Dream - Boehm Remix,Autograf,Dream (Remixes),latin",
+      "In A Dream - Original Mix,Rockell,What Are You Loo"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.0006680488586425781,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.30614709854125977,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "C O O L - Radio Edit,Le Youth,C O O L,pop,0.1679",
+      "Get To Me,Jay Dixie,Get To Me,latin,0.1623",
+      "ME,CLC,ME,pop,0.1591"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.0004730224609375,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.23178505897521973,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "One More Time,Daft Punk,Discovery,pop,0.2406",
+      "Don't Fight The Music,Virginia To Vegas,Volume I,p",
+      "ID - Ultra Music Festival Anthem,Kygo,ID (Ultra Mu"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.0008378028869628906,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 12000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.29088783264160156,
+    "results_count": 10,
+    "index_build_time": 2.714707851409912,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Like This,Throttle,Like This,edm,0.3252",
+      "I Feel Love,Sam Smith,I Feel Love,pop,0.2282",
+      "Feel Alive,Jack & James,Feel Alive,edm,0.205"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 12000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.0007529258728027344,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.5592911243438721,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Your Love,Mercer,Your Love,edm,0.2355",
+      "Is It Love,3LAU,Is It Love,latin,0.1869",
+      "Get It On,Jenaux,Get It On,edm,0.186"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.007836341857910156,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.32660913467407227,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Dance X,Gesaffelstein,Novo Sonic System,edm,0.4624",
+      "Solo Dance,Martin Jensen,Solo Dance,pop,0.3302",
+      "Solo Dance,Martin Jensen,Solo Dance,latin,0.3302"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.0006160736083984375,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.3597221374511719,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Crazy Things at Night,Sonny Fodera,Insane,edm,0.28",
+      "28 Grams,Wolfgang Gartner,28 Grams,edm,0.2",
+      "The Night King,Graham Bell,The Night King,edm,0.19"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.0005340576171875,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.3715701103210449,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Beat Of My Heart,Lost Frequencies,Alive And Feelin",
+      "Beat of My Heart (feat. Love Harder),Lost Frequenc",
+      "Rock My Heart - Radio Mix,Haddaway,The Album,pop,0"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.0006339550018310547,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.32979798316955566,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Rock The House,Afrojack,Rock The House,edm,0.6199",
+      "I Wanna Rock,Twisted Sister,Absolute Rock Anthems,",
+      "I Wanna Rock,Twisted Sister,Stay Hungry,rock,0.384"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.0007319450378417969,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.3238358497619629,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "How We Party,R3HAB,How We Party,edm,0.744",
+      "How We Party,R3HAB,How We Party,edm,0.744",
+      "We Like To Party,Showtek,We Like To Party,edm,0.62"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.0009768009185791016,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.30967187881469727,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "I See,Nicky Romero,I See,edm,0.3685",
+      "Dream - Boehm Remix,Autograf,Dream (Remixes),latin",
+      "In A Dream - Original Mix,Rockell,What Are You Loo"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.00072479248046875,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.4147357940673828,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Told You Once,Foxa,Told You Once,edm,0.1704",
+      "C O O L - Radio Edit,Le Youth,C O O L,pop,0.1674",
+      "ME,CLC,ME,pop,0.1673"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.00048804283142089844,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.3253297805786133,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "One More Time,Daft Punk,Discovery,pop,0.2396",
+      "As the Music Plays the Band,Bamboo,As the Music Pl",
+      "ID - Ultra Music Festival Anthem,Kygo,ID (Ultra Mu"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.0005321502685546875,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 16000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.40966010093688965,
+    "results_count": 10,
+    "index_build_time": 3.8068878650665283,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Like This,Throttle,Like This,edm,0.3199",
+      "I Feel Love,Sam Smith,I Feel Love,pop,0.2308",
+      "Tell Me,Rust,Tell Me (feat. Cozy),pop,0.2223"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 16000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.0007219314575195312,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.6121909618377686,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Your Love,Mercer,Your Love,edm,0.2326",
+      "Is It Love,3LAU,Is It Love,latin,0.1863",
+      "Get It On,Jenaux,Get It On,edm,0.1835"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "love",
+    "query_category": "emotion",
+    "execution_time": 0.005156040191650391,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.36726999282836914,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "I Wanna Dance,Jonas Blue,I Wanna Dance,pop,0.6119",
+      "The Beat,Mike Williams,The Beat,pop,0.3859",
+      "Solo Dance,Martin Jensen,Solo Dance,pop,0.3326"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "dance",
+    "query_category": "movement",
+    "execution_time": 0.001306772232055664,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.43259191513061523,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Crazy Things at Night,Sonny Fodera,Insane,edm,0.28",
+      "28 Grams,Wolfgang Gartner,28 Grams,edm,0.1992",
+      "I Wanna Rave,Steve Aoki,I Wanna Rave,edm,0.1929"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "night",
+    "query_category": "time",
+    "execution_time": 0.00041866302490234375,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.3996241092681885,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Beat Of My Heart,Lost Frequencies,Alive And Feelin",
+      "Beat of My Heart (feat. Love Harder),Lost Frequenc",
+      "Summer ID,Manse,Summer ID,edm,0.1841"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "heart",
+    "query_category": "emotion",
+    "execution_time": 0.0006263256072998047,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.35114598274230957,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Rock The House,Afrojack,Rock The House,edm,0.6203",
+      "I Wanna Rock,Twisted Sister,Absolute Rock Anthems,",
+      "I Wanna Rock,Twisted Sister,Stay Hungry,rock,0.384"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "rock",
+    "query_category": "genre",
+    "execution_time": 0.0005021095275878906,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.372039794921875,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "How We Party,R3HAB,How We Party,edm,0.7477",
+      "How We Party,R3HAB,How We Party,edm,0.7477",
+      "We Like To Party,Showtek,We Like To Party,edm,0.62"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "party",
+    "query_category": "social",
+    "execution_time": 0.0007171630859375,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.36649084091186523,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "I See,Nicky Romero,I See,edm,0.3701",
+      "Dream - Boehm Remix,Autograf,Dream (Remixes),latin",
+      "In A Dream - Original Mix,Rockell,What Are You Loo"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "dream",
+    "query_category": "abstract",
+    "execution_time": 0.0007159709930419922,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.5022909641265869,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Told You Once,Foxa,Told You Once,edm,0.1686",
+      "C O O L - Radio Edit,Le Youth,C O O L,pop,0.1663",
+      "ME,CLC,ME,pop,0.1655"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "baby",
+    "query_category": "relationship",
+    "execution_time": 0.005765676498413086,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.37281274795532227,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "One More Time,Daft Punk,Discovery,pop,0.2419",
+      "Don't Fight The Music,Virginia To Vegas,Volume I,p",
+      "As the Music Plays the Band,Bamboo,As the Music Pl"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "music",
+    "query_category": "meta",
+    "execution_time": 0.0003440380096435547,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  },
+  {
+    "system": "MyIndex",
+    "dataset_size": 18000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.5099830627441406,
+    "results_count": 10,
+    "index_build_time": 4.271517992019653,
+    "memory_usage_mb": 0.0,
+    "results_preview": [
+      "Like This,Throttle,Like This,edm,0.3199",
+      "I Feel Love,Sam Smith,I Feel Love,pop,0.2297",
+      "Tell Me,Rust,Tell Me (feat. Cozy),pop,0.222"
+    ]
+  },
+  {
+    "system": "PostgreSQL",
+    "dataset_size": 18000,
+    "query": "feel",
+    "query_category": "emotion",
+    "execution_time": 0.0008900165557861328,
+    "results_count": 0,
+    "index_build_time": 0.0,
+    "memory_usage_mb": 0.0,
+    "results_preview": []
+  }
+]

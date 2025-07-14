@@ -1,0 +1,30 @@
+SPOTIFY SONGS BENCHMARK RESULTS
+==================================================
+
+Dataset: Real Spotify Songs with Lyrics
+Total Dataset Size: 18,454 songs
+Test Queries: 10 musical/emotional terms
+
+PERFORMANCE COMPARISON:
+------------------------------------------------------------
+    Size |      MyIndex |   PostgreSQL |    Speedup
+------------------------------------------------------------
+   1,000 |     0.0205s |     0.0013s |     0.06x
+   2,000 |     0.0426s |     0.0008s |     0.02x
+   4,000 |     0.0855s |     0.0011s |     0.01x
+   8,000 |     0.1750s |     0.0011s |     0.01x
+  12,000 |     0.2680s |     0.0011s |     0.00x
+  16,000 |     0.3730s |     0.0014s |     0.00x
+  18,000 |     0.4286s |     0.0016s |     0.00x
+------------------------------------------------------------
+
+QUERY CATEGORY BREAKDOWN:
+----------------------------------------
+abstract    : 0.1771s avg, 10.0 results avg
+emotion     : 0.2295s avg, 10.0 results avg
+genre       : 0.1754s avg, 10.0 results avg
+meta        : 0.1752s avg, 10.0 results avg
+movement    : 0.1780s avg, 10.0 results avg
+relationship: 0.2239s avg, 10.0 results avg
+social      : 0.1763s avg, 10.0 results avg
+time        : 0.1962s avg, 10.0 results avg

@@ -36,7 +36,7 @@ class MultidimensionalRTree(BaseIndex):
             # Crear índice R-Tree en archivos
             self.idx = Index(self.rtree_path, properties=p)
             
-            print(f"✅ R-Tree creado en archivos: {self.rtree_path}.data, {self.rtree_path}.index")
+            print(f" R-Tree creado en archivos: {self.rtree_path}.data, {self.rtree_path}.index")
             
         except Exception as e:
             print(f"Error creando R-Tree: {e}")
@@ -45,7 +45,7 @@ class MultidimensionalRTree(BaseIndex):
                 p = Property()
                 p.dimension = dimension
                 self.idx = Index(self.rtree_path, properties=p)
-                print(f"✅ R-Tree creado con configuración básica")
+                print(f" R-Tree creado con configuración básica")
             except Exception as e2:
                 raise Exception(f"No se pudo crear R-Tree: {e2}")
 
@@ -139,7 +139,7 @@ class MultidimensionalRTree(BaseIndex):
                 with open(counter_file, 'rb') as f:
                     self.id_counter = pickle.load(f)
                     
-            print(f"📁 Datos cargados desde disco: {len(self.data_map)} registros")
+            print(f" Datos cargados desde disco: {len(self.data_map)} registros")
             
         except Exception as e:
             print(f"Info: No se pudieron cargar datos previos: {e}")
@@ -290,7 +290,7 @@ class MultidimensionalRTree(BaseIndex):
                 header = next(reader, None)
                 
                 lat_col, lon_col = self._find_coordinate_columns(header)
-                print(f"📍 Usando columnas - Latitud: {lat_col}, Longitud: {lon_col}")
+                print(f" Usando columnas - Latitud: {lat_col}, Longitud: {lon_col}")
                 
                 for row in reader:
                     if len(row) <= max(lat_col, lon_col):
@@ -317,7 +317,7 @@ class MultidimensionalRTree(BaseIndex):
                 
                 # Sincronizar todos los cambios al disco
                 self._sync_to_disk()
-                print(f"💾 R-Tree guardado en memoria secundaria: {record_count} registros")
+                print(f" R-Tree guardado en memoria secundaria: {record_count} registros")
                 
         except Exception as e:
             print(f"Error cargando CSV: {e}")

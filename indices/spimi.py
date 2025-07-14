@@ -174,13 +174,13 @@ class SPIMIIndexBuilder:
         if TEXT_PROCESSING_AVAILABLE:
             try:
                 self.preprocessor = TextPreprocessor(language)
-                print("✅ Usando procesador avanzado con NLTK")
+                print(" Usando procesador avanzado con NLTK")
             except:
                 self.preprocessor = SimpleTextProcessor(language)
-                print("⚠️ Fallback a procesador simplificado")
+                print(" Fallback a procesador simplificado")
         else:
             self.preprocessor = SimpleTextProcessor(language)
-            print("📝 Usando procesador simplificado integrado")
+            print(" Usando procesador simplificado integrado")
         
         self.tfidf_calculator = SimpleTFIDFCalculator()
         
@@ -203,15 +203,15 @@ class SPIMIIndexBuilder:
         Returns:
             Ruta del índice construido
         """
-        print(f"\n🔨 SPIMI LOAD_CSV")
+        print(f"\n SPIMI LOAD_CSV")
         print("=" * 50)
-        print(f"📁 Archivo: {csv_path}")
+        print(f" Archivo: {csv_path}")
         
         # Usar campos de texto proporcionados o los por defecto
         if text_fields:
             self.text_fields = text_fields
         
-        print(f"📋 Campos de texto: {self.text_fields}")
+        print(f" Campos de texto: {self.text_fields}")
         
         try:
             # Paso 1: Cargar datos del CSV
@@ -219,19 +219,19 @@ class SPIMIIndexBuilder:
             with open(csv_path, 'r', encoding=encoding) as f:
                 reader = csv.DictReader(f)
                 headers = list(reader.fieldnames) if reader.fieldnames else []
-                print(f"📊 Headers detectados: {headers}")
+                print(f" Headers detectados: {headers}")
                 
                 # Verificar que los campos de texto existen
                 available_text_fields = []
                 for field in self.text_fields:
                     if field in headers:
                         available_text_fields.append(field)
-                        print(f"✅ Campo textual encontrado: {field}")
+                        print(f" Campo textual encontrado: {field}")
                     else:
-                        print(f"⚠️ Campo textual no encontrado: {field}")
+                        print(f" Campo textual no encontrado: {field}")
                 
                 if not available_text_fields:
-                    print("❌ No se encontraron campos textuales válidos")
+                    print(" No se encontraron campos textuales válidos")
                     return ""
                 
                 self.text_fields = available_text_fields
@@ -240,13 +240,13 @@ class SPIMIIndexBuilder:
                 for row in reader:
                     data.append(row)
             
-            print(f"📊 Registros cargados: {len(data)}")
+            print(f" Registros cargados: {len(data)}")
             
             # Paso 2: Preprocesar documentos
             processed_docs, doc_metadata = self._preprocess_documents(data)
             
             if not processed_docs:
-                print("❌ No se procesaron documentos válidos")
+                print(" No se procesaron documentos válidos")
                 return ""
             
             # Paso 3: Calcular TF-IDF
@@ -255,11 +255,11 @@ class SPIMIIndexBuilder:
             # Paso 4: Construir índice usando SPIMI
             index_path = self.build_index(processed_docs, tfidf_vectors)
             
-            print(f"✅ Índice SPIMI construido exitosamente: {index_path}")
+            print(f" Índice SPIMI construido exitosamente: {index_path}")
             return index_path
             
         except Exception as e:
-            print(f"❌ Error en load_csv: {e}")
+            print(f" Error en load_csv: {e}")
             import traceback
             traceback.print_exc()
             return ""
@@ -269,7 +269,7 @@ class SPIMIIndexBuilder:
         processed_docs = []
         doc_metadata = {}
         
-        print("📝 Preprocesando documentos...")
+        print(" Preprocesando documentos...")
         
         for doc_id, record in enumerate(data):
             if doc_id % 1000 == 0:
@@ -285,12 +285,12 @@ class SPIMIIndexBuilder:
                 processed_docs.append((doc_id, tokens))
                 doc_metadata[doc_id] = record.copy()
         
-        print(f"✅ Preprocesados {len(processed_docs)} documentos con contenido")
+        print(f" Preprocesados {len(processed_docs)} documentos con contenido")
         return processed_docs, doc_metadata
     
     def _calculate_tfidf_vectors(self, processed_docs: List[Tuple[int, List[str]]]) -> List[Dict[str, float]]:
         """Calcula vectores TF-IDF para todos los documentos"""
-        print("📊 Calculando vectores TF-IDF...")
+        print(" Calculando vectores TF-IDF...")
         
         # Extraer solo los tokens para el cálculo
         documents_tokens = [tokens for _, tokens in processed_docs]
@@ -312,7 +312,7 @@ class SPIMIIndexBuilder:
             else:
                 self.tfidf_calculator.document_norms[doc_id] = 0.0
         
-        print(f"✅ Calculados {len(tfidf_vectors)} vectores TF-IDF")
+        print(f" Calculados {len(tfidf_vectors)} vectores TF-IDF")
         return tfidf_vectors
     
     def build_index(self, 
@@ -328,8 +328,8 @@ class SPIMIIndexBuilder:
         Returns:
             Ruta del archivo de índice final
         """
-        print(f"🔨 Construcción SPIMI: {len(documents)} documentos")
-        print(f"📊 Límite memoria: {self.memory_limit_mb} MB")
+        print(f" Construcción SPIMI: {len(documents)} documentos")
+        print(f" Límite memoria: {self.memory_limit_mb} MB")
         
         # Paso 1: Crear bloques parciales
         self._create_partial_blocks(documents, tfidf_vectors)
@@ -340,7 +340,7 @@ class SPIMIIndexBuilder:
         # Paso 3: Limpiar archivos temporales
         self._cleanup_temp_files()
         
-        print(f"✅ Índice SPIMI construido: {final_index_path}")
+        print(f" Índice SPIMI construido: {final_index_path}")
         return final_index_path
     
     def _create_partial_blocks(self, 
@@ -351,7 +351,7 @@ class SPIMIIndexBuilder:
         
         for i, (doc_id, tokens) in enumerate(documents):
             if i % 1000 == 0:
-                print(f"📝 Procesando documento {i+1}/{len(documents)}")
+                print(f" Procesando documento {i+1}/{len(documents)}")
             
             # Obtener vector TF-IDF del documento
             tfidf_vector = tfidf_vectors[i] if i < len(tfidf_vectors) else {}
@@ -364,7 +364,7 @@ class SPIMIIndexBuilder:
             
             # Verificar si se excede el límite de memoria
             if current_block.get_memory_usage_mb() >= self.memory_limit_mb:
-                print(f"💾 Bloque {current_block.block_id}: {current_block.get_memory_usage_mb():.1f} MB")
+                print(f" Bloque {current_block.block_id}: {current_block.get_memory_usage_mb():.1f} MB")
                 self._write_block_to_disk(current_block)
                 
                 # Crear nuevo bloque
@@ -395,11 +395,11 @@ class SPIMIIndexBuilder:
             }, f)
         
         self.block_files.append(block_path)
-        print(f"💿 Bloque {block.block_id}: {len(block.index)} términos, {block.doc_count} docs")
+        print(f" Bloque {block.block_id}: {len(block.index)} términos, {block.doc_count} docs")
     
     def _merge_blocks(self) -> str:
         """Hace merge de todos los bloques parciales y precalcula normas"""
-        print(f"🔀 Merging {len(self.block_files)} bloques...")
+        print(f" Merging {len(self.block_files)} bloques...")
         
         if not self.block_files:
             # No hay bloques, crear índice vacío
@@ -416,7 +416,7 @@ class SPIMIIndexBuilder:
                     block_data = pickle.load(f)
                     all_blocks.append(block_data['index'])
             except Exception as e:
-                print(f"⚠️ Error cargando bloque {block_file}: {e}")
+                print(f" Error cargando bloque {block_file}: {e}")
                 continue
         
         # Merge simple: combinar todos los índices
@@ -438,7 +438,7 @@ class SPIMIIndexBuilder:
             final_index[term] = [(doc_id, weight) for doc_id, weight in sorted(doc_weights.items())]
         
         # ========== NUEVA FUNCIONALIDAD: PRECALCULAR NORMAS ==========
-        print("📊 Precalculando normas de documentos...")
+        print(" Precalculando normas de documentos...")
         
         # Calcular document frequencies
         document_frequencies = {}
@@ -465,7 +465,7 @@ class SPIMIIndexBuilder:
             else:
                 document_norms[doc_id] = 0.0
         
-        print(f"✅ Normas precalculadas para {len(document_norms)} documentos")
+        print(f" Normas precalculadas para {len(document_norms)} documentos")
         
         # Guardar índice final CON normas precalculadas
         final_index_path = os.path.join(self.output_dir, "spimi_index.pkl")
@@ -482,8 +482,8 @@ class SPIMIIndexBuilder:
                 'document_frequencies': document_frequencies
             }, f)
         
-        print(f"🎯 Merge completado: {len(final_index)} términos únicos")
-        print(f"💾 Normas guardadas: {len(document_norms)} documentos")
+        print(f" Merge completado: {len(final_index)} términos únicos")
+        print(f" Normas guardadas: {len(document_norms)} documentos")
         return final_index_path
 
 
@@ -530,20 +530,20 @@ def demo_spimi():
     print("""
     SPIMI (Single-Pass In-Memory Indexing) integrado:
     
-    1. ✅ Método load_csv() compatible con otros índices
-    2. 📝 Procesamiento de texto integrado
-    3. 🔨 Construcción por bloques en memoria secundaria
-    4. 🔀 Merge eficiente de bloques parciales
-    5. 📊 Cálculo TF-IDF incorporado
+    1.  Método load_csv() compatible con otros índices
+    2.  Procesamiento de texto integrado
+    3.  Construcción por bloques en memoria secundaria
+    4.  Merge eficiente de bloques parciales
+    5.  Cálculo TF-IDF incorporado
     
     Uso:
     >>> spimi = SPIMIIndexBuilder('indices')
     >>> index_path = spimi.load_csv('datos/spotify_songs.csv')
     >>> stats = spimi.get_stats()
     
-    ✅ Maneja datasets más grandes que la RAM
-    ✅ Solo un pase sobre los documentos
-    ✅ Compatible con la interfaz existente
+     Maneja datasets más grandes que la RAM
+     Solo un pase sobre los documentos
+     Compatible con la interfaz existente
     """)
     print("=" * 50)
 

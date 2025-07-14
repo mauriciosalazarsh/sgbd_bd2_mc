@@ -264,7 +264,7 @@ class SequentialFile(BaseIndex):
         """Eliminar registros por clave del campo indexado - VERSIÓN MEJORADA"""
         removed: List[str] = []
         
-        print(f"\n🗑️ SEQUENTIAL REMOVE:")
+        print(f"\n SEQUENTIAL REMOVE:")
         print(f"   - Clave a eliminar: '{key}'")
         print(f"   - Campo indexado: {self.field_index}")
         
@@ -278,7 +278,7 @@ class SequentialFile(BaseIndex):
         print(f"   - Registros en aux: {total_aux}")
         
         if initial_head == -1:
-            print("   ⚠️ Tabla vacía, no hay nada que eliminar")
+            print("    Tabla vacía, no hay nada que eliminar")
             return removed
         
         # Recorrer la lista enlazada buscando registros a eliminar
@@ -293,7 +293,7 @@ class SequentialFile(BaseIndex):
                 path = self.data_file if is_data else self.aux_file
                 idx = cur if is_data else cur - count_data
                 
-                print(f"   🔍 Examinando posición {cur} ({'data' if is_data else 'aux'}[{idx}])")
+                print(f"    Examinando posición {cur} ({'data' if is_data else 'aux'}[{idx}])")
                 
                 # Leer registro
                 rec = self._read_record(path, idx)
@@ -304,7 +304,7 @@ class SequentialFile(BaseIndex):
                 
                 if record_key == key.strip():
                     # ¡ENCONTRADO! Eliminar este registro
-                    print(f"   ✅ ELIMINANDO registro: {str(rec)}")
+                    print(f"    ELIMINANDO registro: {str(rec)}")
                     removed.append(str(rec))
                     eliminated_count += 1
                     
@@ -344,10 +344,10 @@ class SequentialFile(BaseIndex):
                     prev, cur = cur, rec.next_pos
                     
             except Exception as e:
-                print(f"   ❌ Error procesando posición {cur}: {e}")
+                print(f"    Error procesando posición {cur}: {e}")
                 break
         
-        print(f"   📊 RESULTADO: {eliminated_count} registros eliminados")
+        print(f"    RESULTADO: {eliminated_count} registros eliminados")
         
         # Verificar estado final
         final_head = self._read_header(self.data_file)

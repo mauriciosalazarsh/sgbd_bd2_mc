@@ -18,14 +18,14 @@ try:
     from text_processing.tfidf import TFIDFCalculator, BatchTFIDFProcessor
     TEXT_PROCESSING_AVAILABLE = True
 except ImportError:
-    print("⚠️ Módulos de text_processing no encontrados. Usando versión simplificada.")
+    print(" Módulos de text_processing no encontrados. Usando versión simplificada.")
     TEXT_PROCESSING_AVAILABLE = False
 
 try:
     from indices.spimi import SPIMIIndexBuilder
     SPIMI_AVAILABLE = True
 except ImportError:
-    print("⚠️ SPIMI no encontrado, usando construcción en memoria.")
+    print(" SPIMI no encontrado, usando construcción en memoria.")
     SPIMI_AVAILABLE = False
 
 # Versión simplificada de procesamiento de texto
@@ -195,15 +195,15 @@ class InvertedIndex:
             try:
                 self.preprocessor = TextPreprocessor(language)
                 self.tfidf_calculator = TFIDFCalculator()
-                print("✅ Usando componentes avanzados con NLTK")
+                print(" Usando componentes avanzados con NLTK")
             except:
                 self.preprocessor = SimpleTextProcessor(language)
                 self.tfidf_calculator = SimpleTFIDFCalculator()
-                print("⚠️ Fallback a componentes simplificados")
+                print(" Fallback a componentes simplificados")
         else:
             self.preprocessor = SimpleTextProcessor(language)
             self.tfidf_calculator = SimpleTFIDFCalculator()
-            print("⚠️ Usando componentes simplificados")
+            print(" Usando componentes simplificados")
         
         # Estructura del índice
         self.inverted_index = {}  # term -> [(doc_id, tfidf_weight)]
@@ -244,29 +244,29 @@ class InvertedIndex:
         """
         if not self._is_index_loaded():
             if not self._load_index():
-                print("❌ No se pudo cargar el índice")
+                print(" No se pudo cargar el índice")
                 return []
         
         start_time = time.time()
-        print(f"🔍 Buscando: '{query}'")
+        print(f" Buscando: '{query}'")
         
         # Preprocesar consulta
         query_tokens = self.preprocessor.preprocess(query)
         if not query_tokens:
-            print("⚠️ Consulta vacía después del procesamiento")
+            print(" Consulta vacía después del procesamiento")
             return []
         
-        print(f"📝 Tokens de consulta: {query_tokens}")
+        print(f" Tokens de consulta: {query_tokens}")
         
         # Calcular vector TF-IDF de la consulta
         query_vector = self.tfidf_calculator.calculate_query_tfidf_vector(query_tokens)
         if not query_vector:
-            print("⚠️ Vector de consulta vacío")
+            print(" Vector de consulta vacío")
             return []
         
         # Obtener documentos candidatos
         candidate_docs = self._get_candidate_documents(query_vector)
-        print(f"📊 Documentos candidatos: {len(candidate_docs)}")
+        print(f" Documentos candidatos: {len(candidate_docs)}")
         
         # Calcular similitudes
         scores = self._calculate_similarities(query_vector, candidate_docs)
@@ -275,7 +275,7 @@ class InvertedIndex:
         top_k_results = heapq.nlargest(k, scores, key=lambda x: x[1])
         
         search_time = time.time() - start_time
-        print(f"✅ Búsqueda completada en {search_time:.3f}s - {len(top_k_results)} resultados")
+        print(f" Búsqueda completada en {search_time:.3f}s - {len(top_k_results)} resultados")
         
         return top_k_results
     
@@ -291,14 +291,14 @@ class InvertedIndex:
             True si la construcción fue exitosa
         """
         try:
-            print(f"🔨 Construyendo índice invertido: {len(data)} documentos")
-            print(f"📋 Campos de texto: {self.text_fields}")
+            print(f" Construyendo índice invertido: {len(data)} documentos")
+            print(f" Campos de texto: {self.text_fields}")
             
             # Paso 1: Preprocesar documentos
             processed_docs, doc_metadata = self._preprocess_documents(data, progress_callback)
             
             if not processed_docs:
-                print("❌ No se procesaron documentos válidos")
+                print(" No se procesaron documentos válidos")
                 return False
             
             # Paso 2: Calcular TF-IDF
@@ -306,10 +306,10 @@ class InvertedIndex:
             
             # Paso 3: Construir índice invertido
             if SPIMI_AVAILABLE and self.use_spimi and len(data) > 500:
-                print("🔧 Usando algoritmo SPIMI para construcción")
+                print(" Usando algoritmo SPIMI para construcción")
                 self._build_index_with_spimi(processed_docs, tfidf_vectors)
             else:
-                print("🔧 Construyendo índice en memoria")
+                print(" Construyendo índice en memoria")
                 self._build_index_in_memory(processed_docs, tfidf_vectors)
             
             # Paso 4: Guardar metadatos y estadísticas
@@ -317,11 +317,11 @@ class InvertedIndex:
             self.total_documents = len(data)
             self._save_index()
             
-            print("✅ Índice construido exitosamente!")
+            print(" Índice construido exitosamente!")
             return True
             
         except Exception as e:
-            print(f"❌ Error construyendo índice: {e}")
+            print(f" Error construyendo índice: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -331,7 +331,7 @@ class InvertedIndex:
         processed_docs = []
         doc_metadata = {}
         
-        print("📝 Preprocesando documentos...")
+        print(" Preprocesando documentos...")
         
         for doc_id, record in enumerate(data):
             if progress_callback and doc_id % 100 == 0:
@@ -347,12 +347,12 @@ class InvertedIndex:
                 processed_docs.append((doc_id, tokens))
                 doc_metadata[doc_id] = record.copy()
         
-        print(f"✅ Preprocesados {len(processed_docs)} documentos con contenido")
+        print(f" Preprocesados {len(processed_docs)} documentos con contenido")
         return processed_docs, doc_metadata
     
     def _calculate_tfidf_vectors(self, processed_docs: List[Tuple[int, List[str]]]) -> List[Dict[str, float]]:
         """Calcula vectores TF-IDF para todos los documentos"""
-        print("📊 Calculando vectores TF-IDF...")
+        print(" Calculando vectores TF-IDF...")
         
         # Extraer solo los tokens para el cálculo
         documents_tokens = [tokens for _, tokens in processed_docs]
@@ -374,14 +374,14 @@ class InvertedIndex:
             else:
                 self.tfidf_calculator.document_norms[doc_id] = 0.0
         
-        print(f"✅ Calculados {len(tfidf_vectors)} vectores TF-IDF")
+        print(f" Calculados {len(tfidf_vectors)} vectores TF-IDF")
         return tfidf_vectors
     
     def _build_index_with_spimi(self, processed_docs: List[Tuple[int, List[str]]], 
                                tfidf_vectors: List[Dict[str, float]]):
         """Construye el índice usando SPIMI para grandes colecciones"""
         if not SPIMI_AVAILABLE:
-            print("⚠️ SPIMI no disponible, usando construcción en memoria")
+            print(" SPIMI no disponible, usando construcción en memoria")
             self._build_index_in_memory(processed_docs, tfidf_vectors)
             return
             
@@ -408,7 +408,7 @@ class InvertedIndex:
             if os.path.exists(index_file):
                 os.remove(index_file)
         except Exception as e:
-            print(f"⚠️ Error con SPIMI: {e}")
+            print(f" Error con SPIMI: {e}")
             self._build_index_in_memory(processed_docs, tfidf_vectors)
     
     def _build_index_in_memory(self, processed_docs: List[Tuple[int, List[str]]], 
@@ -469,7 +469,7 @@ class InvertedIndex:
     
     def _save_index(self):
         """Guarda el índice y metadatos al disco"""
-        print("💾 Guardando índice al disco...")
+        print(" Guardando índice al disco...")
         
         try:
             # Guardar índice principal
@@ -491,18 +491,18 @@ class InvertedIndex:
             with open(self.stats_file, 'wb') as f:
                 pickle.dump(stats, f)
             
-            print(f"✅ Índice guardado: {self.index_file}")
+            print(f" Índice guardado: {self.index_file}")
         except Exception as e:
-            print(f"❌ Error guardando índice: {e}")
+            print(f" Error guardando índice: {e}")
     
     def _load_index(self) -> bool:
         """Carga el índice desde disco"""
         try:
-            print(f"📂 Cargando índice: {self.index_file}")
+            print(f" Cargando índice: {self.index_file}")
             
             # Cargar índice principal
             if not os.path.exists(self.index_file):
-                print(f"❌ Archivo de índice no encontrado: {self.index_file}")
+                print(f" Archivo de índice no encontrado: {self.index_file}")
                 return False
             
             with open(self.index_file, 'rb') as f:
@@ -516,11 +516,11 @@ class InvertedIndex:
                     self.tfidf_calculator.document_norms = metadata.get('document_norms', {})
                     self.total_documents = metadata.get('total_documents', 0)
             
-            print(f"✅ Índice cargado: {len(self.inverted_index)} términos, {self.total_documents} documentos")
+            print(f" Índice cargado: {len(self.inverted_index)} términos, {self.total_documents} documentos")
             return True
             
         except Exception as e:
-            print(f"❌ Error cargando índice: {e}")
+            print(f" Error cargando índice: {e}")
             return False
     
     def _is_index_loaded(self) -> bool:
@@ -593,5 +593,5 @@ def create_text_index(data: List[dict],
         success = index.build_index_from_data(data)
         return index if success else None
     except Exception as e:
-        print(f"❌ Error creando índice: {e}")
+        print(f" Error creando índice: {e}")
         return None

@@ -1,4 +1,4 @@
-// lib/api.ts (COMPLETO)
+// lib/api.ts - VERSIÓN ACTUALIZADA CON BÚSQUEDA TEXTUAL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // ========== TIPOS ==========
@@ -19,6 +19,7 @@ export interface QueryResult {
   rows: any[][];
   execution_time: number;
   affected_rows?: number;
+  count?: number;
 }
 
 export interface TableScanResult {
@@ -32,6 +33,49 @@ export interface APIResponse<T = any> {
   success: boolean;
   message: string;
   data?: T | undefined;
+}
+
+// NUEVO: Tipos para búsqueda textual
+export interface TextSearchRequest {
+  table_name: string;
+  query: string;
+  k?: number;
+  fields?: string[];
+}
+
+export interface TextSearchResult {
+  columns: string[];
+  rows: any[][];
+  count: number;
+  search_time: number;
+  query: string;
+  table_name: string;
+}
+
+// NUEVO: Tipos para búsqueda multimedia
+export interface MultimediaSearchRequest {
+  table_name: string;
+  query_file_path: string;
+  k?: number;
+  fields?: string[];
+  method: string;
+}
+
+export interface MultimediaSearchResult {
+  columns: string[];
+  rows: any[][];
+  count: number;
+  search_time: number;
+  query_file_path: string;
+  table_name: string;
+  method: string;
+}
+
+export interface CreateTextIndexRequest {
+  table_name: string;
+  csv_file_path: string;
+  text_fields: string[];
+  language?: string;
 }
 
 // ========== CLIENTE API ==========
@@ -57,7 +101,9 @@ export class DatabaseAPI {
       'hash': 'Extendible Hash',
       'bplustree': 'B+ Tree',
       'btree': 'B+ Tree',
-      'rtree': 'R-Tree'
+      'rtree': 'R-Tree',
+      'SPIMI': 'Índice Textual SPIMI',
+      'textual': 'Índice Textual'
     };
     return labels[indexType.toLowerCase()] || indexType;
   }
@@ -69,7 +115,7 @@ export class DatabaseAPI {
     try {
       const url = `${API_BASE_URL}${endpoint}`;
       
-      console.log(`🌐 Haciendo request a: ${url}`); // Debug log
+      console.log(`🌐 Haciendo request a: ${url}`);
       
       const defaultHeaders: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -83,7 +129,7 @@ export class DatabaseAPI {
         },
       });
 
-      console.log(`📡 Response status: ${response.status}`); // Debug log
+      console.log(`📡 Response status: ${response.status}`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -91,9 +137,8 @@ export class DatabaseAPI {
       }
 
       const data = await response.json();
-      console.log(`✅ Response data:`, data); // Debug log
+      console.log(`✅ Response data:`, data);
       
-      // El backend ya devuelve el formato APIResponse correcto
       return data as APIResponse<T>;
       
     } catch (error) {
@@ -116,9 +161,9 @@ export class DatabaseAPI {
     if (response.success && response.data) {
       const tables: TableInfo[] = Object.entries(response.data.tables).map(([tableName, info]) => ({
         table_name: tableName,
-        index_type: this.normalizeIndexType(info.index_type),
+        index_type: this.normalizeIndexType(info.index_type || info.type || 'unknown'),
         field_index: info.field_index,
-        record_count: 0,
+        record_count: info.record_count || 0,
         headers: info.headers || [],
         headers_count: info.headers_count || 0,
         csv_path: info.csv_path || ''
@@ -142,32 +187,34 @@ export class DatabaseAPI {
   static async executeSQL(query: string): Promise<APIResponse<QueryResult | TableScanResult>> {
     const requestBody = { query: query.trim() };
     
-    console.log('🔍 Enviando consulta:', requestBody); // Debug log
+    console.log('🔍 Enviando consulta:', requestBody);
     
     const response = await this.makeRequest<{
-      columns: string[];     // ← El backend YA devuelve este formato
-      rows: any[][];         // ← El backend YA devuelve este formato
+      columns: string[];
+      rows: any[][];
       count: number;
       query: string;
       table_name?: string;
       csv_path?: string;
+      execution_time?: number;
+      query_type?: string;
     }>('/sql/execute', {
       method: 'POST',
       body: JSON.stringify(requestBody),
     });
 
-    console.log('📥 Respuesta del backend:', response); // Debug log
+    console.log('📥 Respuesta del backend:', response);
 
     if (response.success && response.data) {
-      // El backend YA devuelve el formato correcto
       const result: QueryResult = {
-        query_type: this.getQueryType(query),
+        query_type: response.data.query_type || this.getQueryType(query),
         columns: response.data.columns || [],
         rows: response.data.rows || [],
-        execution_time: 0
+        execution_time: response.data.execution_time || 0,
+        count: response.data.count || (response.data.rows ? response.data.rows.length : 0)
       };
       
-      console.log('✅ Resultado parseado:', result); // Debug log
+      console.log('✅ Resultado parseado:', result);
       
       return {
         success: true,
@@ -176,7 +223,7 @@ export class DatabaseAPI {
       };
     }
 
-    console.log('❌ Error en respuesta:', response); // Debug log
+    console.log('❌ Error en respuesta:', response);
 
     return {
       success: response.success,
@@ -185,7 +232,8 @@ export class DatabaseAPI {
         query_type: this.getQueryType(query),
         columns: [],
         rows: [],
-        execution_time: 0
+        execution_time: 0,
+        count: 0
       }
     };
   }
@@ -199,7 +247,7 @@ export class DatabaseAPI {
       csv_path?: string;
     }>(`/tables/${tableName}/scan`);
 
-    console.log('📥 Scan response:', response); // Debug log
+    console.log('📥 Scan response:', response);
 
     if (response.success && response.data) {
       const limitedRows = response.data.rows.slice(0, limit);
@@ -229,6 +277,154 @@ export class DatabaseAPI {
       }
     };
   }
+
+  // ========== NUEVOS MÉTODOS PARA BÚSQUEDA TEXTUAL ==========
+
+  static async createTextIndex(
+    tableName: string,
+    csvFilePath: string,
+    textFields: string[],
+    language: string = 'spanish'
+  ): Promise<APIResponse<{ table_name: string; index_type: string; text_fields: string[] }>> {
+    const requestBody: CreateTextIndexRequest = {
+      table_name: tableName,
+      csv_file_path: csvFilePath,
+      text_fields: textFields,
+      language: language
+    };
+
+    console.log('🔍 Creando índice textual:', requestBody);
+
+    return this.makeRequest('/tables/create-text-index', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+  }
+
+  static async textSearch(
+    tableName: string,
+    query: string,
+    k: number = 10,
+    fields: string[] = ['*']
+  ): Promise<APIResponse<TextSearchResult>> {
+    const requestBody: TextSearchRequest = {
+      table_name: tableName,
+      query: query,
+      k: k,
+      fields: fields
+    };
+
+    console.log('🔍 Ejecutando búsqueda textual:', requestBody);
+
+    const response = await this.makeRequest<{
+      columns: string[];
+      rows: any[][];
+      count: number;
+      search_time: number;
+      query: string;
+      table_name: string;
+      execution_time?: number;
+    }>('/search/text', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (response.success && response.data) {
+      const result: TextSearchResult = {
+        columns: response.data.columns || [],
+        rows: response.data.rows || [],
+        count: response.data.count || 0,
+        search_time: response.data.search_time || response.data.execution_time || 0,
+        query: response.data.query || query,
+        table_name: response.data.table_name || tableName
+      };
+
+      return {
+        success: true,
+        message: response.message || `Búsqueda textual completada: ${result.count} resultados`,
+        data: result
+      };
+    }
+
+    return {
+      success: response.success,
+      message: response.message || 'Error en búsqueda textual',
+      data: {
+        columns: [],
+        rows: [],
+        count: 0,
+        search_time: 0,
+        query: query,
+        table_name: tableName
+      }
+    };
+  }
+
+  static async multimediaSearch(
+    tableName: string,
+    queryFilePath: string,
+    k: number = 10,
+    fields: string[] = ['*'],
+    method: string = 'SIFT'
+  ): Promise<APIResponse<MultimediaSearchResult>> {
+    const requestBody: MultimediaSearchRequest = {
+      table_name: tableName,
+      query_file_path: queryFilePath,
+      k: k,
+      fields: fields,
+      method: method
+    };
+
+    console.log('🔍 Ejecutando búsqueda multimedia:', requestBody);
+
+    const response = await this.makeRequest<{
+      columns: string[];
+      rows: any[][];
+      count: number;
+      search_time: number;
+      query_file_path: string;
+      table_name: string;
+      method: string;
+      execution_time?: number;
+    }>('/multimedia/search', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+
+    if (response.success && response.data) {
+      const result: MultimediaSearchResult = {
+        columns: response.data.columns || [],
+        rows: response.data.rows || [],
+        count: response.data.count || 0,
+        search_time: response.data.search_time || response.data.execution_time || 0,
+        query_file_path: response.data.query_file_path || queryFilePath,
+        table_name: response.data.table_name || tableName,
+        method: response.data.method || method
+      };
+
+      return {
+        success: true,
+        message: response.message || `Búsqueda multimedia completada: ${result.count} resultados`,
+        data: result
+      };
+    }
+
+    return {
+      success: response.success,
+      message: response.message || 'Error en búsqueda multimedia',
+      data: {
+        columns: [],
+        rows: [],
+        count: 0,
+        search_time: 0,
+        query_file_path: queryFilePath,
+        table_name: tableName,
+        method: method
+      }
+    };
+  }
+
+  // ========== MÉTODOS EXISTENTES ==========
 
   static async createTable(
     tableName: string,
@@ -337,7 +533,11 @@ export class DatabaseAPI {
       'ISAM': 'isam',
       'ExtendibleHash': 'hash',
       'BPlusTree': 'btree',
-      'RTree': 'rtree'
+      'RTree': 'rtree',
+      'SPIMI': 'SPIMI',
+      'textual': 'textual',
+      'SpotifyTextual': 'SPIMI', // En caso de que el backend use nombres específicos
+      'TextIndex': 'textual'
     };
     
     return mapping[backendType] || backendType.toLowerCase();
@@ -349,7 +549,9 @@ export class DatabaseAPI {
       'isam': 'isam',
       'hash': 'hash',
       'btree': 'bplustree',
-      'rtree': 'rtree'
+      'rtree': 'rtree',
+      'SPIMI': 'spimi',
+      'textual': 'spimi'
     };
     
     return mapping[frontendType] || frontendType;
@@ -357,10 +559,61 @@ export class DatabaseAPI {
 
   private static getQueryType(query: string): string {
     const trimmed = query.trim().toLowerCase();
-    if (trimmed.startsWith('select')) return 'SELECT';
+    if (trimmed.startsWith('select')) {
+      if (trimmed.includes('@@')) {
+        return 'TEXT_SEARCH';
+      }
+      return 'SELECT';
+    }
     if (trimmed.startsWith('insert')) return 'INSERT';
     if (trimmed.startsWith('delete')) return 'DELETE';
-    if (trimmed.startsWith('create')) return 'CREATE';
+    if (trimmed.startsWith('create')) {
+      if (trimmed.includes('spimi') || trimmed.includes('text')) {
+        return 'CREATE_TEXT_INDEX';
+      }
+      return 'CREATE_TABLE';
+    }
     return 'UNKNOWN';
+  }
+
+  // ========== MÉTODOS DE UTILIDAD PARA BÚSQUEDA TEXTUAL ==========
+
+  static generateTextSearchExamples(tableName: string): string[] {
+    return [
+      `SELECT * FROM ${tableName} WHERE lyrics @@ 'love song' LIMIT 10;`,
+      `SELECT track_name, track_artist FROM ${tableName} WHERE lyrics @@ 'rock music' LIMIT 5;`,
+      `SELECT * FROM ${tableName} WHERE combined_text @@ 'dance party' LIMIT 8;`,
+      `SELECT title, artist FROM ${tableName} WHERE content @@ 'acoustic guitar' LIMIT 6;`
+    ];
+  }
+
+  static validateTextSearchQuery(query: string): { isValid: boolean; error?: string } {
+    const trimmed = query.trim().toLowerCase();
+    
+    if (!trimmed.includes('@@')) {
+      return { isValid: false, error: 'La consulta debe incluir el operador @@' };
+    }
+    
+    if (!trimmed.startsWith('select')) {
+      return { isValid: false, error: 'Solo se permiten consultas SELECT para búsqueda textual' };
+    }
+    
+    const aaMatch = query.match(/(\w+)\s*@@\s*['"]([^'"]+)['"]/i);
+    if (!aaMatch) {
+      return { isValid: false, error: 'Formato incorrecto. Use: campo @@ "consulta"' };
+    }
+    
+    return { isValid: true };
+  }
+
+  static extractSearchTermsFromQuery(query: string): { field: string; terms: string } | null {
+    const aaMatch = query.match(/(\w+)\s*@@\s*['"]([^'"]+)['"]/i);
+    if (aaMatch) {
+      return {
+        field: aaMatch[1],
+        terms: aaMatch[2]
+      };
+    }
+    return null;
   }
 }

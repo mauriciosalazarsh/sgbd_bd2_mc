@@ -1,0 +1,20 @@
+# Dependencias para el benchmark de búsqueda textual
+# Instalar con: pip install -r requirements_benchmark.txt
+
+# Base de datos PostgreSQL
+psycopg2-binary>=2.9.0
+
+# Análisis y visualización
+matplotlib>=3.5.0
+pandas>=1.4.0
+numpy>=1.21.0
+seaborn>=0.11.0
+
+# Utilidades adicionales
+tqdm>=4.60.0  # Barras de progreso
+tabulate>=0.9.0  # Formateo de tablas
+colorama>=0.4.0  # Colores en terminal
+
+# Opcional: para análisis estadístico avanzado
+scipy>=1.8.0
+scikit-learn>=1.0.0

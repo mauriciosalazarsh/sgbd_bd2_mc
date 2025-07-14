@@ -74,7 +74,7 @@ class BPlusTree(BaseIndex):
                     result.append(parsed_row)
             node = node.next
             
-        print(f"🔍 B+Tree search - devolviendo {len(result)} arrays")
+        print(f" B+Tree search - devolviendo {len(result)} arrays")
         return result
 
     def range_search(self, start_key, end_key):
@@ -109,7 +109,7 @@ class BPlusTree(BaseIndex):
                     return result
             node = node.next
         
-        print(f"📊 B+Tree range_search - devolviendo {len(result)} arrays")
+        print(f" B+Tree range_search - devolviendo {len(result)} arrays")
         return result
 
     def insert(self, _, values):
@@ -126,7 +126,7 @@ class BPlusTree(BaseIndex):
             cleaned = str(v).strip()
             # Escapar comillas y comas para CSV
             if ',' in cleaned or '"' in cleaned or '\n' in cleaned:
-                cleaned = f'"{cleaned.replace('"', '""')}"'
+                cleaned = '"' + cleaned.replace('"', '""') + '"'
             cleaned_values.append(cleaned)
         
         value = ','.join(cleaned_values)  # Fila completa en CSV
@@ -237,7 +237,7 @@ class BPlusTree(BaseIndex):
                 result.append(parsed_row)
             node = node.next
         
-        print(f"🌳 B+Tree scan_all - devolviendo {len(result)} arrays")
+        print(f" B+Tree scan_all - devolviendo {len(result)} arrays")
         return result
     
     def load_csv(self, path_or_data, index_col: Optional[int] = None):

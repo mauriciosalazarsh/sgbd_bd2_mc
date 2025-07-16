@@ -15,10 +15,10 @@ class MultidimensionalRTree(BaseIndex):
         self.vector_map = {}  # ID → vector original
         
         # Crear directorio para archivos si no existe
-        os.makedirs('indices', exist_ok=True)
+        os.makedirs('embeddings', exist_ok=True)
         
         # Ruta completa para archivos del R-Tree
-        self.rtree_path = os.path.join('indices', path)
+        self.rtree_path = os.path.join('embeddings', path)
         
         try:
             # Configurar propiedades del R-Tree para MEMORIA SECUNDARIA

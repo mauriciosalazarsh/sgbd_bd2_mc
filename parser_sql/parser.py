@@ -322,6 +322,7 @@ class SQLParser:
             raise FileNotFoundError(f"Archivo de consulta no encontrado: {query_file}")
         
         engine = self.multimedia_engines[table_name]
+        media_type = engine.media_type  # Obtener el tipo de medio del engine
         
         try:
             # === EJECUTAR BÚSQUEDA ===
@@ -358,6 +359,21 @@ class SQLParser:
                 
                 # Obtener metadatos para este archivo
                 file_metadata = metadata.get(file_path, {})
+                
+                # IMPORTANTE: Si no hay metadatos, usar el file_path del índice
+                if not file_metadata:
+                    # Para audio, asegurar que audio_path esté presente
+                    if media_type == 'audio':
+                        file_metadata = {'audio_path': file_path}
+                    # Para imágenes, asegurar que image_path esté presente
+                    elif media_type == 'image':
+                        file_metadata = {'image_path': file_path}
+                else:
+                    # Si hay metadatos pero falta el path específico del medio
+                    if media_type == 'audio' and 'audio_path' not in file_metadata:
+                        file_metadata['audio_path'] = file_path
+                    elif media_type == 'image' and 'image_path' not in file_metadata:
+                        file_metadata['image_path'] = file_path
                 
                 # Mostrar resultado en consola
                 title = file_metadata.get('title', file_metadata.get('name', filename))

@@ -33,31 +33,45 @@ class CodebookBuilder:
         self.scaler = StandardScaler() # type: ignore
         self.codebook = None
         self.is_fitted = False
-        self.audio_feature_dim = None  # For audio direct features
+        self.audio_feature_dim = None
+        self.cnn_feature_dim = None
+        self.method = None  # Store the extraction method  # For audio direct features
     
     def build_codebook(self, features_data, normalize=True, save_path=None):
         """Build codebook from features"""
-        print(f"Construyendo codebook para {self.feature_type}...")
+        print(f"\n🔨 Construyendo codebook para {self.feature_type}...")
+        print("=" * 50)
         
-        if self.feature_type == 'audio':
-            # For audio: use features directly, no clustering needed
-            # Just fit the scaler for normalization
-            print("Audio detectado: usando características directas sin clustering")
-            audio_features = []
+        # Check if we should use direct features (audio or CNN methods)
+        use_direct_features = (self.feature_type == 'audio' or 
+                              (self.feature_type == 'image' and self.method in ['resnet50', 'inception_v3']))
+        
+        if use_direct_features:
+            # For audio and CNN: use features directly, no clustering needed
+            print(f"{self.feature_type.capitalize()} detectado con método {self.method}: usando características directas sin clustering")
+            direct_features = []
             for file_path, features in features_data:
-                if features.ndim == 1:
-                    audio_features.append(features)
+                if features.ndim == 2 and features.shape[0] == 1:
+                    # CNN features (1 x feature_dim)
+                    direct_features.append(features[0])
+                elif features.ndim == 1:
+                    # Audio features
+                    direct_features.append(features)
             
-            if audio_features:
-                audio_features_matrix = np.vstack(audio_features)
-                self.audio_feature_dim = audio_features_matrix.shape[1]
+            if direct_features:
+                features_matrix = np.vstack(direct_features)
+                if self.feature_type == 'audio':
+                    self.audio_feature_dim = features_matrix.shape[1]
+                else:
+                    self.cnn_feature_dim = features_matrix.shape[1]
                 
                 if normalize:
-                    self.scaler.fit(audio_features_matrix)
+                    self.scaler.fit(features_matrix)
                 
                 self.is_fitted = True
-                self.codebook = None  # No codebook for audio
-                print(f"Audio: dimensión de características = {self.audio_feature_dim}")
+                self.codebook = None  # No codebook for direct features
+                feature_dim = self.audio_feature_dim or self.cnn_feature_dim
+                print(f"{self.feature_type.capitalize()}: dimensión de características = {feature_dim}")
             
         else:
             # For images: standard bag-of-words clustering
@@ -76,22 +90,24 @@ class CodebookBuilder:
                 raise ValueError("No se encontraron descriptores válidos para clustering")
             
             descriptors = np.vstack(all_descriptors)
-            print(f"Total descriptores para clustering: {len(descriptors)}")
+            print(f"📊 Total descriptores para clustering: {len(descriptors)}")
             
             if normalize:
+                print("📐 Normalizando descriptores...")
                 descriptors = self.scaler.fit_transform(descriptors)
             
             # Perform clustering
+            print(f"🎯 Ejecutando K-means con {self.n_clusters} clusters...")
             if self.use_minibatch:
-                self.kmeans = MiniBatchKMeans(n_clusters=self.n_clusters, random_state=self.random_state) # type: ignore
+                self.kmeans = MiniBatchKMeans(n_clusters=self.n_clusters, random_state=self.random_state, verbose=1) # type: ignore
             else:
-                self.kmeans = KMeans(n_clusters=self.n_clusters, random_state=self.random_state) # type: ignore
+                self.kmeans = KMeans(n_clusters=self.n_clusters, random_state=self.random_state, verbose=1) # type: ignore
             
             self.kmeans.fit(descriptors)
             self.codebook = self.kmeans.cluster_centers_
             self.is_fitted = True
             
-            print(f"Codebook construido: {self.n_clusters} clusters")
+            print(f"✅ Codebook construido: {self.n_clusters} clusters")
         
         if save_path:
             self.save_codebook(save_path)
@@ -103,21 +119,28 @@ class CodebookBuilder:
         if not self.is_fitted:
             raise ValueError("Codebook no entrenado")
         
-        if self.feature_type == 'audio':
-            # For audio: return normalized features directly as "histogram"
-            if features.ndim == 1:
-                histogram = features.copy()
-                if normalize and self.scaler:
-                    histogram = self.scaler.transform(histogram.reshape(1, -1))[0]
-                
-                # Ensure non-negative values for histogram
-                histogram = histogram - histogram.min()
-                if histogram.sum() > 0:
-                    histogram = histogram / histogram.sum()
-                
-                return histogram.astype(np.float32)
+        # Check if we should use direct features
+        use_direct_features = (self.feature_type == 'audio' or 
+                              (self.feature_type == 'image' and self.method in ['resnet50', 'inception_v3']))
+        
+        if use_direct_features:
+            # For audio and CNN: return normalized features directly as "histogram"
+            if features.ndim == 2 and features.shape[0] == 1:
+                histogram = features[0].copy()  # CNN features
+            elif features.ndim == 1:
+                histogram = features.copy()  # Audio features
             else:
-                raise ValueError("Audio features should be 1D array")
+                raise ValueError(f"Unexpected feature shape for {self.feature_type}: {features.shape}")
+            
+            if normalize and self.scaler:
+                histogram = self.scaler.transform(histogram.reshape(1, -1))[0]
+            
+            # Ensure non-negative values for histogram
+            histogram = histogram - histogram.min()
+            if histogram.sum() > 0:
+                histogram = histogram / histogram.sum()
+            
+            return histogram.astype(np.float32)
         
         else:
             # For images: standard bag-of-words
@@ -145,13 +168,24 @@ class CodebookBuilder:
     
     def create_histograms_batch(self, features_data, normalize=True):
         """Create histograms for multiple files"""
+        print(f"\n📊 Creando histogramas para {len(features_data)} archivos...")
+        print("=" * 50)
         histograms = []
-        for file_path, features in features_data:
+        total = len(features_data)
+        
+        for i, (file_path, features) in enumerate(features_data, 1):
+            if i == 1 or i % 10 == 0 or i == total:
+                progress = i / total * 100
+                bar_length = 40
+                filled = int(bar_length * i / total)
+                bar = '█' * filled + '░' * (bar_length - filled)
+                print(f"\r[{bar}] {progress:.1f}% - Procesando {i}/{total}", end='', flush=True)
             try:
                 histogram = self.create_bow_histogram(features, normalize)
                 histograms.append((file_path, histogram))
             except Exception as e:
-                print(f"Error processing {file_path}: {e}")
+                print(f"\n❌ Error processing {file_path}: {e}")
+        print(f"\n✅ Histogramas creados: {len(histograms)}/{total}")
         return histograms
     
     def save_codebook(self, save_path):

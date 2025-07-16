@@ -212,6 +212,12 @@ class MultimediaTFIDF:
         if histograms.ndim == 1:
             histograms = histograms.reshape(1, -1)
         
+        # Check dimension compatibility
+        if histograms.shape[1] != len(self.idf_weights):
+            # Skip TF-IDF for incompatible dimensions (e.g., CNN features)
+            print(f"Warning: TF-IDF skipped - dimension mismatch ({histograms.shape[1]} vs {len(self.idf_weights)})")
+            return histograms
+        
         # TF-IDF = TF * IDF
         tfidf_histograms = histograms * self.idf_weights
         

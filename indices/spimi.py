@@ -403,7 +403,8 @@ class SPIMIIndexBuilder:
         
         if not self.block_files:
             # No hay bloques, crear índice vacío
-            final_index_path = os.path.join(self.output_dir, "spimi_index.pkl")
+            os.makedirs("embeddings", exist_ok=True)
+            final_index_path = "embeddings/spimi_index.pkl"
             with open(final_index_path, 'wb') as f:
                 pickle.dump({'index': {}, 'total_terms': 0, 'build_method': 'SPIMI'}, f)
             return final_index_path
@@ -468,7 +469,8 @@ class SPIMIIndexBuilder:
         print(f" Normas precalculadas para {len(document_norms)} documentos")
         
         # Guardar índice final CON normas precalculadas
-        final_index_path = os.path.join(self.output_dir, "spimi_index.pkl")
+        os.makedirs("embeddings", exist_ok=True)
+        final_index_path = "embeddings/spimi_index.pkl"
         with open(final_index_path, 'wb') as f:
             pickle.dump({
                 'index': final_index,
@@ -504,7 +506,7 @@ class SPIMIIndexBuilder:
     
     def get_stats(self) -> Dict:
         """Obtiene estadísticas del índice construido"""
-        stats_file = os.path.join(self.output_dir, "spimi_index.pkl")
+        stats_file = "embeddings/spimi_index.pkl"
         if os.path.exists(stats_file):
             try:
                 with open(stats_file, 'rb') as f:

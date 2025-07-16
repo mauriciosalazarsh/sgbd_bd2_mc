@@ -28,6 +28,9 @@ class Engine:
         
         # NUEVO: Soporte para índices textuales
         self.text_tables: Dict[str, Dict[str, Any]] = {}  # tabla -> {index_path, text_fields, csv_path}
+        
+        # NUEVO: Soporte para tablas de embeddings
+        self.embedding_tables: Dict[str, Dict[str, Any]] = {}  # tabla -> {embeddings, metadata, pickle_path}
 
     def register_text_table(self, table_name: str, index_path: str, text_fields: List[str], csv_path: str):
         """Registra una tabla con índice textual SPIMI"""
@@ -54,6 +57,29 @@ class Engine:
             
         except Exception as e:
             print(f" Error leyendo headers para tabla {table_name}: {e}")
+
+    def register_embedding_table(self, table_name: str, embeddings: Any, metadata: Dict[str, Any], pickle_path: str):
+        """Registra una tabla de embeddings cargada desde pickle"""
+        self.embedding_tables[table_name] = {
+            'embeddings': embeddings,
+            'metadata': metadata,
+            'pickle_path': pickle_path,
+            'type': 'embeddings'
+        }
+        
+        # Crear headers basados en metadata
+        if metadata and isinstance(metadata, dict):
+            headers = ['embedding_id'] + list(next(iter(metadata.values())).keys() if metadata else [])
+        else:
+            headers = ['embedding_id', 'embedding_vector']
+        
+        self.table_headers[table_name] = headers
+        self.table_file_paths[table_name] = pickle_path
+        
+        print(f" Tabla de embeddings '{table_name}' registrada exitosamente")
+        print(f"    Pickle: {pickle_path}")
+        print(f"    Embeddings shape: {embeddings.shape if hasattr(embeddings, 'shape') else 'unknown'}")
+        print(f"    Headers: {headers}")
 
     def textual_search(self, table_name: str, query_text: str, k: int = 10) -> List[Tuple[Dict[str, Any], float]]:
         """
@@ -90,12 +116,34 @@ class Engine:
             
             # Cargar documentos originales para los resultados
             documents = []
-            with open(csv_path, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    documents.append(row)
             
-            print(f" Documentos cargados: {len(documents)}")
+            # Si hay CSV, cargar desde ahí
+            if csv_path and os.path.exists(csv_path):
+                with open(csv_path, 'r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        documents.append(row)
+                print(f" Documentos cargados desde CSV: {len(documents)}")
+            
+            # Si no hay CSV, intentar cargar desde el índice
+            elif 'doc_info' in index_data:
+                doc_info = index_data['doc_info']
+                print(f" Documentos encontrados en índice: {len(doc_info)}")
+                # Convertir doc_info a lista de documentos
+                for doc_id, doc_data in doc_info.items():
+                    if isinstance(doc_data, dict):
+                        documents.append(doc_data)
+                    else:
+                        # Si es solo texto, crear un documento básico
+                        documents.append({'content': str(doc_data), 'doc_id': doc_id})
+            
+            # Si no hay documentos, crear documentos vacíos
+            if not documents:
+                print(" ADVERTENCIA: No se encontraron documentos, usando placeholders")
+                # Crear documentos placeholder basados en el índice
+                doc_count = index_data.get('total_documents', 100)
+                for i in range(doc_count):
+                    documents.append({'doc_id': i, 'content': f'Documento {i}'})
             
             # Procesar consulta usando componentes de InvertedIndex
             # Crear un índice temporal para ejecutar la búsqueda

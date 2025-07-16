@@ -60,6 +60,7 @@ export default function DatabaseManager() {
   const [isConnected, setIsConnected] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pickleInputRef = useRef<HTMLInputElement>(null)
   
   // Estados de paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -474,6 +475,56 @@ export default function DatabaseManager() {
     }
   }
 
+  const handlePickleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.pkl')) {
+      addNotification('error', 'Solo se permiten archivos pickle (.pkl)')
+      return
+    }
+
+    // Primero subir el archivo
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const uploadResponse = await fetch('http://localhost:8000/tables/upload-pickle-file', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.json()
+        throw new Error(errorData.detail || 'Error al subir archivo pickle')
+      }
+      
+      const uploadData = await uploadResponse.json()
+      
+      // Luego cargar la tabla desde el pickle
+      // Extraer el nombre base sin _histograms, _codebook o _features
+      let tableName = file.name.replace('.pkl', '')
+      tableName = tableName.replace(/_histograms$/, '')
+                          .replace(/_codebook$/, '')
+                          .replace(/_features$/, '')
+                          .replace(/[^a-zA-Z0-9_]/g, '_')
+      
+      const loadResponse = await DatabaseAPI.loadPickleTable({
+        table_name: tableName,
+        pickle_file_path: uploadData.data.file_path
+      })
+      
+      if (loadResponse.success) {
+        addNotification('success', `Tabla "${tableName}" cargada exitosamente desde pickle`)
+        loadTables()
+      } else {
+        addNotification('error', loadResponse.message || 'Error al cargar tabla desde pickle')
+      }
+    } catch (error) {
+      addNotification('error', error instanceof Error ? error.message : 'Error al procesar archivo pickle')
+    }
+  }
+
   const clearQuery = () => {
     setSqlQuery("")
     setQueryState({ isLoading: false, result: null, error: null, executionTime: 0 })
@@ -869,7 +920,6 @@ export default function DatabaseManager() {
                             <audio 
                               controls 
                               className="w-full"
-                              autoPlay
                             >
                               <source src={`/${mediaPath}`} type="audio/mpeg" />
                               <source src={`/${mediaPath}`} type="audio/wav" />
@@ -944,15 +994,34 @@ export default function DatabaseManager() {
             <tbody className="bg-white/60 backdrop-blur-sm divide-y divide-slate-200">
               {paginatedRows.map((row: any[], rowIndex) => (
                 <tr key={startIndex + rowIndex} className="hover:bg-blue-50/50 transition-colors duration-150">
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="px-6 py-4 text-sm text-slate-700">
-                      {typeof cell === 'number' && !isNaN(cell) ? (
-                        <span className="font-mono">{cell}</span>
-                      ) : (
-                        String(cell || '')
-                      )}
-                    </td>
-                  ))}
+                  {row.map((cell, cellIndex) => {
+                    const columnName = queryState.result?.columns?.[cellIndex];
+                    const isImagePath = columnName === 'image_path' || columnName === 'image';
+                    
+                    return (
+                      <td key={cellIndex} className="px-6 py-4 text-sm text-slate-700">
+                        {isImagePath && cell ? (
+                          <img 
+                            src={`http://localhost:8000/${cell}`}
+                            alt="Imagen"
+                            className="max-w-[100px] h-auto rounded"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const span = document.createElement('span');
+                              span.textContent = 'Imagen no disponible';
+                              span.className = 'text-gray-500';
+                              target.parentNode?.appendChild(span);
+                            }}
+                          />
+                        ) : typeof cell === 'number' && !isNaN(cell) ? (
+                          <span className="font-mono">{cell}</span>
+                        ) : (
+                          String(cell || '')
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -1022,7 +1091,6 @@ export default function DatabaseManager() {
             <div>
               <h1 className="font-bold text-lg">BDII Manager</h1>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-blue-100">Con Búsqueda Textual</span>
                 <div className={`w-2 h-2 rounded-full ${getConnectionStatusColor()}`} />
                 <span className="text-xs text-blue-100">
                   {getConnectionStatusText()}
@@ -1053,39 +1121,8 @@ export default function DatabaseManager() {
               <Plus className="w-4 h-4" />
               Tabla
             </button>
-            
-            <button
-              onClick={() => setCreateTextModal({ ...createTextModal, isOpen: true })}
-              className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
-            >
-              <Type className="w-4 h-4" />
-              Textual
-            </button>
           </div>
 
-          {/* NUEVO: Sección de búsqueda textual */}
-          {textualTables.length > 0 && (
-            <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="w-4 h-4 text-purple-600" />
-                <span className="text-sm font-medium text-purple-800">Búsqueda Textual</span>
-              </div>
-              <button
-                onClick={() => setTextSearchModal({ ...textSearchModal, isOpen: true })}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
-              >
-                <Zap className="w-4 h-4" />
-                Buscar Texto
-              </button>
-              <button
-                onClick={() => setMultimediaSearchModal({ ...multimediaSearchModal, isOpen: true })}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-              >
-                <Image className="w-4 h-4" />
-                Buscar Multimedia
-              </button>
-            </div>
-          )}
 
           <div className="flex gap-2">
             <button
@@ -1094,6 +1131,16 @@ export default function DatabaseManager() {
               title="Subir CSV"
             >
               <Upload className="w-4 h-4" />
+              <span className="text-xs">CSV</span>
+            </button>
+            
+            <button
+              onClick={() => pickleInputRef.current?.click()}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              title="Subir Pickle"
+            >
+              <Upload className="w-4 h-4" />
+              <span className="text-xs font-bold">PKL</span>
             </button>
             
             <input
@@ -1101,6 +1148,14 @@ export default function DatabaseManager() {
               type="file"
               accept=".csv"
               onChange={handleFileUpload}
+              className="hidden"
+            />
+            
+            <input
+              ref={pickleInputRef}
+              type="file"
+              accept=".pkl"
+              onChange={handlePickleUpload}
               className="hidden"
             />
           </div>
@@ -1146,12 +1201,9 @@ export default function DatabaseManager() {
         <div className="px-4 pb-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-slate-700 mb-1">
+              <h3 className="text-sm font-semibold text-slate-700">
                 Mis Tablas
               </h3>
-              <p className="text-xs text-slate-500">
-                {filteredTables.length} tabla{filteredTables.length !== 1 ? 's' : ''} disponible{filteredTables.length !== 1 ? 's' : ''}
-              </p>
             </div>
             <button
               onClick={loadTables}
@@ -1182,47 +1234,7 @@ export default function DatabaseManager() {
                 </div>
                 <div className="flex-1 text-left">
                   <div className="font-medium truncate">{table.table_name}</div>
-                  <div className={`text-xs mt-1 ${
-                    selectedTable === table.table_name ? "text-blue-100" : "text-slate-500"
-                  }`}>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">{table.record_count?.toLocaleString() || 0}</span>
-                      <span>registros</span>
-                    </div>
-                    <div className="text-xs opacity-75 mt-0.5">
-                      {DatabaseAPI.getIndexTypeLabel(table.index_type)}
-                    </div>
-                  </div>
                 </div>
-                {/* NUEVO: Indicador especial para tablas textuales */}
-                {(table.index_type === 'SPIMI' || table.index_type === 'textual') && (
-                  <div className={`p-1 rounded ${
-                    selectedTable === table.table_name ? "bg-white/20" : "bg-purple-100"
-                  }`}>
-                    <MessageSquare className={`w-3 h-3 ${
-                      selectedTable === table.table_name ? "text-white" : "text-purple-600"
-                    }`} />
-                  </div>
-                )}
-                {/* NUEVO: Botón de búsqueda rápida para tablas textuales */}
-                {(table.index_type === 'SPIMI' || table.index_type === 'textual') && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      insertTextSearchQuery(table.table_name)
-                    }}
-                    className={`p-1 rounded transition-colors ${
-                      selectedTable === table.table_name 
-                        ? "hover:bg-white/20" 
-                        : "hover:bg-purple-200"
-                    }`}
-                    title="Insertar consulta de ejemplo"
-                  >
-                    <Zap className={`w-3 h-3 ${
-                      selectedTable === table.table_name ? "text-white" : "text-purple-600"
-                    }`} />
-                  </button>
-                )}
               </button>
             ))}
           </div>
@@ -1239,13 +1251,6 @@ export default function DatabaseManager() {
                 >
                   <Plus className="w-4 h-4" />
                   Tabla Tradicional
-                </button>
-                <button
-                  onClick={() => setCreateTextModal({ ...createTextModal, isOpen: true })}
-                  className="flex items-center justify-center gap-2 w-full px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
-                >
-                  <Type className="w-4 h-4" />
-                  Índice Textual
                 </button>
               </div>
             </div>
@@ -1342,26 +1347,7 @@ export default function DatabaseManager() {
               <span className="font-medium">Explorar Tabla</span>
             </button>
 
-            {/* NUEVO: Botón de búsqueda textual */}
-            {textualTables.length > 0 && (
-              <button
-                onClick={() => setTextSearchModal({ ...textSearchModal, isOpen: true })}
-                disabled={queryState.isLoading || !isConnected}
-                className="flex items-center gap-2 border border-purple-200 text-purple-700 px-6 py-3 rounded-xl hover:bg-purple-50 hover:border-purple-300 transition-all duration-200 bg-white/60 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <BookOpen className="w-4 h-4" />
-                <span className="font-medium">Búsqueda Textual</span>
-              </button>
-            )}
             
-            <button
-              onClick={() => setMultimediaSearchModal({ ...multimediaSearchModal, isOpen: true })}
-              disabled={queryState.isLoading || !isConnected}
-              className="flex items-center gap-2 border border-blue-200 text-blue-700 px-6 py-3 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all duration-200 bg-white/60 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Image className="w-4 h-4" />
-              <span className="font-medium">Búsqueda Multimedia</span>
-            </button>
             
             <button 
               onClick={clearQuery}
@@ -1372,35 +1358,6 @@ export default function DatabaseManager() {
             </button>
           </div>
 
-          {/* NUEVO: Consultas de ejemplo para tablas textuales */}
-          {textualTables.length > 0 && (
-            <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen className="w-4 h-4 text-purple-600" />
-                <span className="text-sm font-medium text-purple-800">Consultas de Ejemplo - Búsqueda Textual</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSqlQuery("SELECT * FROM musica WHERE lyrics @@ 'love song' LIMIT 10;")}
-                  className="px-3 py-1 bg-white text-purple-700 text-xs rounded-lg hover:bg-purple-100 transition-colors border border-purple-200"
-                >
-                  Buscar por letra
-                </button>
-                <button
-                  onClick={() => setSqlQuery("SELECT track_name, track_artist FROM musica WHERE combined_text @@ 'rock metal' LIMIT 5;")}
-                  className="px-3 py-1 bg-white text-purple-700 text-xs rounded-lg hover:bg-purple-100 transition-colors border border-purple-200"
-                >
-                  Buscar género
-                </button>
-                <button
-                  onClick={() => setSqlQuery("CREATE TABLE songs FROM FILE 'datos/spotify_songs.csv' USING INDEX spimi('track_name', 'track_artist');")}
-                  className="px-3 py-1 bg-white text-purple-700 text-xs rounded-lg hover:bg-purple-100 transition-colors border border-purple-200"
-                >
-                  Crear índice textual
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Results - Flexible height with scroll */}
@@ -1549,478 +1506,10 @@ export default function DatabaseManager() {
       </div>
 
       {/* NUEVO: Modal para crear índice textual */}
-      {createTextModal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <BookOpen className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800">Crear Índice Textual SPIMI</h3>
-                  <p className="text-slate-600 text-sm mt-1">
-                    Para búsqueda semántica con TF-IDF
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Nombre de la tabla
-                </label>
-                <input
-                  type="text"
-                  value={createTextModal.tableName}
-                  onChange={(e) => setCreateTextModal({...createTextModal, tableName: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="ej: musica_textual"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Archivo CSV
-                </label>
-                <input
-                  type="text"
-                  value={createTextModal.csvFile}
-                  onChange={(e) => setCreateTextModal({...createTextModal, csvFile: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="datos/spotify_songs.csv"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Idioma
-                </label>
-                <select
-                  value={createTextModal.language}
-                  onChange={(e) => setCreateTextModal({...createTextModal, language: e.target.value as 'spanish' | 'english'})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="spanish">🇪🇸 Español</option>
-                  <option value="english">🇺🇸 English</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Campos de texto para indexar
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    id="newTextField"
-                    type="text"
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="nombre_campo"
-                    onKeyPress={(e) => e.key === 'Enter' && addTextField()}
-                  />
-                  <button
-                    onClick={addTextField}
-                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {createTextModal.textFields.map((field, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg">
-                      <MessageSquare className="w-4 h-4 text-purple-600" />
-                      <span className="flex-1 text-sm">{field}</span>
-                      <button
-                        onClick={() => removeTextField(field)}
-                        className="p-1 hover:bg-purple-200 rounded"
-                      >
-                        <X className="w-3 h-3 text-purple-600" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                
-                {createTextModal.textFields.length === 0 && (
-                  <p className="text-xs text-slate-500 mt-2">
-                    Ejemplo: lyrics, track_name, track_artist
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            <div className="p-6 border-t border-slate-200 flex gap-3">
-              <button
-                onClick={() => setCreateTextModal({...createTextModal, isOpen: false})}
-                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={createTextIndex}
-                disabled={createTextModal.textFields.length === 0}
-                className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Crear Índice
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* NUEVO: Modal para búsqueda textual */}
-      {textSearchModal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-            <div className="p-6 border-b border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Zap className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800">Búsqueda Textual</h3>
-                  <p className="text-slate-600 text-sm mt-1">
-                    Buscar usando similitud TF-IDF
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Tabla textual
-                </label>
-                <select
-                  value={textSearchModal.tableName}
-                  onChange={(e) => setTextSearchModal({...textSearchModal, tableName: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Seleccionar tabla...</option>
-                  {textualTables.map((table) => (
-                    <option key={table.table_name} value={table.table_name}>
-                      {table.table_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Consulta de búsqueda
-                </label>
-                <input
-                  type="text"
-                  value={textSearchModal.query}
-                  onChange={(e) => setTextSearchModal({...textSearchModal, query: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="love song romantic music"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Ejemplo: "rock music", "love song", "acoustic guitar"
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Número de resultados (K)
-                </label>
-                <input
-                  type="number"
-                  value={textSearchModal.k}
-                  onChange={(e) => setTextSearchModal({...textSearchModal, k: parseInt(e.target.value) || 10})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  min="1"
-                  max="100"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Campos a mostrar
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    id="newSearchField"
-                    type="text"
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="nombre_campo"
-                    onKeyPress={(e) => e.key === 'Enter' && addSearchField()}
-                  />
-                  <button
-                    onClick={addSearchField}
-                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                <div className="flex flex-wrap gap-1">
-                  {textSearchModal.fields.map((field, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full"
-                    >
-                      {field}
-                      {field !== '*' && (
-                        <button
-                          onClick={() => removeSearchField(field)}
-                          className="hover:bg-purple-200 rounded-full"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 border-t border-slate-200 flex gap-3">
-              <button
-                onClick={() => setTextSearchModal({...textSearchModal, isOpen: false})}
-                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={executeTextSearch}
-                disabled={!textSearchModal.tableName || !textSearchModal.query.trim()}
-                className="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Buscar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal para búsqueda multimedia */}
-      {multimediaSearchModal.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
-            <div className="p-6 border-b border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Image className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-800">Búsqueda Multimedia</h3>
-                  <p className="text-slate-600 text-sm mt-1">
-                    Buscar por similitud visual o de audio
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Tabla multimedia
-                </label>
-                <select
-                  value={multimediaSearchModal.tableName}
-                  onChange={(e) => setMultimediaSearchModal({...multimediaSearchModal, tableName: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Seleccionar tabla...</option>
-                  <option value="fashion">fashion (imágenes)</option>
-                  <option value="fma">fma (audio)</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Tipo de media
-                </label>
-                <div className="flex gap-3">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      value="image"
-                      checked={multimediaSearchModal.mediaType === 'image'}
-                      onChange={(e) => setMultimediaSearchModal({
-                        ...multimediaSearchModal, 
-                        mediaType: e.target.value as 'image' | 'audio',
-                        method: e.target.value === 'image' ? 'SIFT' : 'MFCC'
-                      })}
-                      className="mr-2"
-                    />
-                    <Image className="w-4 h-4 mr-1" />
-                    Imagen
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      value="audio"
-                      checked={multimediaSearchModal.mediaType === 'audio'}
-                      onChange={(e) => setMultimediaSearchModal({
-                        ...multimediaSearchModal, 
-                        mediaType: e.target.value as 'image' | 'audio',
-                        method: e.target.value === 'image' ? 'SIFT' : 'MFCC'
-                      })}
-                      className="mr-2"
-                    />
-                    <Music className="w-4 h-4 mr-1" />
-                    Audio
-                  </label>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Método de extracción
-                </label>
-                <select
-                  value={multimediaSearchModal.method}
-                  onChange={(e) => setMultimediaSearchModal({...multimediaSearchModal, method: e.target.value as any})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {multimediaSearchModal.mediaType === 'image' ? (
-                    <>
-                      <option value="SIFT">SIFT (Scale-Invariant Feature Transform)</option>
-                      <option value="ResNet50">ResNet50 (Deep Learning)</option>
-                      <option value="InceptionV3">InceptionV3 (Deep Learning)</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="MFCC">MFCC (Mel-Frequency Cepstral Coefficients)</option>
-                      <option value="Spectrogram">Spectrogram</option>
-                      <option value="Comprehensive">Comprehensive (Múltiples características)</option>
-                    </>
-                  )}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Archivo de consulta
-                </label>
-                <input
-                  type="text"
-                  value={multimediaSearchModal.queryFilePath}
-                  onChange={(e) => setMultimediaSearchModal({...multimediaSearchModal, queryFilePath: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder={multimediaSearchModal.mediaType === 'image' 
-                    ? "datos/fashion-dataset/images/15970.jpg" 
-                    : "datos/fma_medium/000/000762.mp3"
-                  }
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  {multimediaSearchModal.mediaType === 'image' 
-                    ? "Ejemplo: datos/fashion-dataset/images/15970.jpg" 
-                    : "Ejemplo: datos/fma_medium/000/000762.mp3"
-                  }
-                </p>
-                
-                {/* Preview del archivo de consulta */}
-                {multimediaSearchModal.queryFilePath && (
-                  <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <p className="text-xs font-medium text-slate-600 mb-2">Vista previa:</p>
-                    {multimediaSearchModal.mediaType === 'image' ? (
-                      <div className="aspect-square max-w-32 bg-white rounded border">
-                        <img 
-                          src={`/${multimediaSearchModal.queryFilePath}`}
-                          alt="Preview de consulta"
-                          className="w-full h-full object-contain rounded"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
-
-                          }}
-                        />
-                        <div style={{display: 'none'}} className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-                          <Image className="w-8 h-8 mb-1" />
-                          <span className="text-xs">No disponible</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 p-2 bg-white rounded border">
-                        <Music className="w-5 h-5 text-slate-400" />
-                        <div className="flex-1 min-w-0">
-                          <audio 
-                            controls 
-                            className="w-full h-8"
-                            style={{height: '32px'}}
-                          >
-                            <source src={`/${multimediaSearchModal.queryFilePath}`} />
-                            Audio no disponible
-                          </audio>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Número de resultados (K)
-                </label>
-                <input
-                  type="number"
-                  value={multimediaSearchModal.k}
-                  onChange={(e) => setMultimediaSearchModal({...multimediaSearchModal, k: parseInt(e.target.value) || 10})}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  min="1"
-                  max="50"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Campos a mostrar
-                </label>
-                <select
-                  multiple
-                  value={multimediaSearchModal.fields}
-                  onChange={(e) => {
-                    const selectedFields = Array.from(e.target.selectedOptions, option => option.value);
-                    setMultimediaSearchModal({...multimediaSearchModal, fields: selectedFields});
-                  }}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-20"
-                >
-                  <option value="*">Todos los campos</option>
-                  {multimediaSearchModal.mediaType === 'image' ? (
-                    <>
-                      <option value="id">ID</option>
-                      <option value="image_path">Ruta de imagen</option>
-                      <option value="productDisplayName">Nombre del producto</option>
-                      <option value="gender">Género</option>
-                      <option value="masterCategory">Categoría</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="track_id">ID de track</option>
-                      <option value="title">Título</option>
-                      <option value="artist">Artista</option>
-                      <option value="genre">Género</option>
-                      <option value="audio_path">Ruta de audio</option>
-                    </>
-                  )}
-                </select>
-              </div>
-            </div>
-            
-            <div className="p-6 border-t border-slate-200 flex gap-3">
-              <button
-                onClick={() => setMultimediaSearchModal({...multimediaSearchModal, isOpen: false})}
-                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={executeMultimediaSearch}
-                disabled={!multimediaSearchModal.tableName || !multimediaSearchModal.queryFilePath.trim()}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Buscar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Create Table Modal (existente) */}
       {createModal.isOpen && (

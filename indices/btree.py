@@ -13,7 +13,7 @@ class BTreeNode:
         self.next = None
 
 class BPlusTree(BaseIndex):
-    def __init__(self, path='btree_index.pkl'):
+    def __init__(self, path='embeddings/btree_index.pkl'):
         self.path = path
         self.field_index = 0  # será sobrescrito por el Engine si es necesario
         if os.path.exists(self.path):

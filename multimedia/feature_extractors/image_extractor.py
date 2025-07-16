@@ -166,7 +166,9 @@ class ImageFeatureExtractor:
                 # Versiones más antiguas que no soportan verbose=0
                 features = self.model.predict(img_array)
             
-            return features.flatten()
+            # Para CNN, retornar como array 2D (1 descriptor por imagen)
+            # Esto permite que el codebook builder lo procese correctamente
+            return features.reshape(1, -1)
             
         except Exception as e:
             print(f"Error extrayendo CNN de {image_path}: {e}")
@@ -188,11 +190,17 @@ class ImageFeatureExtractor:
         results = []
         total = len(image_paths)
         
-        print(f"Extrayendo características de {total} imágenes usando {self.method.upper()}...")
+        print(f"\n🖼️  Extrayendo características de {total} imágenes usando {self.method.upper()}...")
+        print("=" * 50)
         
         for i, path in enumerate(image_paths, 1):
-            if i % 10 == 0 or i == total:
-                print(f"Progreso: {i}/{total} ({i/total*100:.1f}%)")
+            # Mostrar progreso más frecuentemente
+            if i == 1 or i % 5 == 0 or i == total:
+                progress = i / total * 100
+                bar_length = 40
+                filled = int(bar_length * i / total)
+                bar = '█' * filled + '░' * (bar_length - filled)
+                print(f"\r[{bar}] {progress:.1f}% - Procesando imagen {i}/{total}", end='', flush=True)
                 
             features = self.extract_features(path)
             if features is not None:
@@ -200,7 +208,7 @@ class ImageFeatureExtractor:
             else:
                 print(f" No se pudieron extraer características de: {path}")
         
-        print(f" Características extraídas exitosamente: {len(results)}/{total}")
+        print(f"\n✅ Características extraídas exitosamente: {len(results)}/{total}")
         return results
     
     def save_features(self, features_data: List[Tuple[str, np.ndarray]], output_path: str):

@@ -20,8 +20,8 @@ SELECT track_name, track_artist, lyrics FROM spotify_songs WHERE lyrics @@ "happ
 -- Buscar canciones con "summer" en el título
 SELECT * FROM spotify_songs WHERE track_name @@ "summer" LIMIT 15;
 
--- Buscar canciones del artista Drake
-SELECT track_name, track_artist FROM spotify_songs WHERE track_artist @@ "Drake" LIMIT 10;
+-- Buscar canciones del artista David Guetta
+SELECT track_name, track_artist FROM spotify_songs WHERE track_artist @@ "David Guetta" LIMIT 10;
 
 -- Buscar canciones con "night" en las letras
 SELECT track_name, track_artist, track_album_name FROM spotify_songs WHERE lyrics @@ "night" LIMIT 8;
@@ -103,7 +103,7 @@ SELECT productDisplayName, baseColour, usage FROM fashion_inception WHERE image_
 
 ### Crear tabla multimedia para audio
 ```sql
-CREATE MULTIMEDIA TABLE fma_audio FROM FILE "datos/fma_complete_dataset.csv" USING audio WITH METHOD mfcc CLUSTERS 256;
+CREATE MULTIMEDIA TABLE fma_audio FROM FILE "datos/fma_subset_2000.csv" USING audio WITH METHOD mfcc CLUSTERS 256;
 ```
 
 ### Consultas de prueba
@@ -111,11 +111,6 @@ CREATE MULTIMEDIA TABLE fma_audio FROM FILE "datos/fma_complete_dataset.csv" USI
 -- Buscar canciones similares a 000002.mp3
 SELECT title, artist, genre FROM fma_audio WHERE audio_sim <-> "datos/fma_medium/000/000002.mp3" METHOD inverted LIMIT 10;
 
--- Buscar canciones similares con duración
-SELECT title, artist, duration FROM fma_audio WHERE audio_sim <-> "datos/fma_medium/001/001486.mp3" LIMIT 15;
-
--- Buscar todas las columnas para canciones similares
-SELECT * FROM fma_audio WHERE audio_sim <-> "datos/fma_medium/002/002819.mp3" METHOD inverted LIMIT 5;
 
 -- Más ejemplos con diferentes archivos de audio
 SELECT title, artist, album FROM fma_audio WHERE audio_sim <-> "datos/fma_medium/003/003456.mp3" LIMIT 20;

@@ -1,6 +1,7 @@
 # api.py - VERSIÓN COMPLETA CON MULTIMEDIA
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
 import os
@@ -9,6 +10,8 @@ import tempfile
 import re
 import time
 import shutil
+import pickle
+import numpy as np  # Para cargar pickles con arrays numpy
 from parser_sql.parser import SQLParser
 from engine import Engine
 
@@ -25,6 +28,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static directories for serving media files
+if os.path.exists("datos"):
+    app.mount("/datos", StaticFiles(directory="datos"), name="datos")
+
 # Instancia global del engine y parser
 engine = Engine()
 sql_parser = SQLParser(engine)
@@ -36,6 +43,19 @@ class CreateTableRequest(BaseModel):
     csv_file_path: str
     index_type: str
     index_field: int
+
+class LoadPickleTableRequest(BaseModel):
+    table_name: str
+    pickle_file_path: str
+    index_type: Optional[str] = "sequential"  # Tipo de índice por defecto
+
+class LoadMultimediaFromPicklesRequest(BaseModel):
+    table_name: str
+    histograms_path: str
+    codebook_path: str
+    features_path: str
+    media_type: str  # 'image' o 'audio'
+    csv_path: Optional[str] = None  # Path al CSV original si está disponible
 
 class InsertRequest(BaseModel):
     table_name: str
@@ -246,24 +266,133 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    # Incluir información de tablas multimedia
+    # Incluir información de todas las tablas
     multimedia_tables_count = len(sql_parser.multimedia_engines)
     text_tables_count = len(getattr(engine, 'text_tables', {}))
-    traditional_tables_count = len(engine.tables)
+    embedding_tables_count = len(getattr(engine, 'embedding_tables', {}))
+    traditional_tables_count = len(engine.tables) - multimedia_tables_count  # Restar multimedia que están en engine.tables
     
     return APIResponse(
         success=True,
         message="Sistema funcionando correctamente",
         data={
             "status": "healthy", 
-            "traditional_tables": list(engine.tables.keys()),
+            "traditional_tables": [t for t in engine.tables.keys() if t not in sql_parser.multimedia_engines],
             "text_tables": list(getattr(engine, 'text_tables', {}).keys()),
             "multimedia_tables": list(sql_parser.multimedia_engines.keys()),
-            "total_tables": traditional_tables_count + text_tables_count + multimedia_tables_count
+            "embedding_tables": list(getattr(engine, 'embedding_tables', {}).keys()),
+            "total_tables": traditional_tables_count + text_tables_count + multimedia_tables_count + embedding_tables_count
         }
     )
 
 # ========== ENDPOINTS MULTIMEDIA ==========
+
+@app.post("/multimedia/load-from-pickles", response_model=APIResponse)
+async def load_multimedia_from_pickles(request: LoadMultimediaFromPicklesRequest):
+    """
+    Reconstruir una tabla multimedia desde archivos pickle existentes
+    """
+    try:
+        # Validar que los archivos existen
+        for path, name in [(request.histograms_path, "histogramas"), 
+                          (request.codebook_path, "codebook"), 
+                          (request.features_path, "features")]:
+            if not os.path.exists(path):
+                raise HTTPException(status_code=404, detail=f"Archivo de {name} no encontrado: {path}")
+        
+        # Validar tipo de media
+        if request.media_type not in ['image', 'audio']:
+            raise HTTPException(status_code=400, detail=f"Tipo de media inválido: {request.media_type}")
+        
+        # Importar módulos necesarios
+        from multimedia.multimedia_engine import MultimediaEngine
+        
+        # Determinar método de características basado en el nombre del archivo
+        feature_method = 'sift'  # Por defecto
+        if 'sift' in request.codebook_path.lower():
+            feature_method = 'sift'
+        elif 'resnet' in request.codebook_path.lower():
+            feature_method = 'resnet50'
+        elif 'inception' in request.codebook_path.lower():
+            feature_method = 'inception_v3'
+        elif 'mfcc' in request.codebook_path.lower():
+            feature_method = 'mfcc'
+        elif 'spectrogram' in request.codebook_path.lower():
+            feature_method = 'spectrogram'
+        
+        print(f"Reconstruyendo tabla multimedia '{request.table_name}' desde pickles")
+        print(f"  Media type: {request.media_type}")
+        print(f"  Feature method detectado: {feature_method}")
+        
+        # Crear motor multimedia
+        multimedia_engine = MultimediaEngine(
+            media_type=request.media_type,
+            feature_method=feature_method
+        )
+        
+        # Cargar datos desde los pickles
+        # Cargar features
+        print("Cargando features...")
+        multimedia_engine.features_data = multimedia_engine.feature_extractor.load_features(request.features_path)
+        print(f"Features cargadas: {len(multimedia_engine.features_data)} archivos")
+        
+        # Cargar codebook
+        print("Cargando codebook...")
+        multimedia_engine.codebook_builder.load_codebook(request.codebook_path)
+        
+        # Cargar histogramas
+        print("Cargando histogramas...")
+        with open(request.histograms_path, 'rb') as f:
+            multimedia_engine.histograms_data = pickle.load(f)
+        print(f"Histogramas cargados: {len(multimedia_engine.histograms_data)} vectores")
+        
+        # Configurar índices de búsqueda
+        print("Configurando índices de búsqueda...")
+        multimedia_engine.knn_inverted.build_index(multimedia_engine.histograms_data)
+        multimedia_engine.knn_sequential.build_database(multimedia_engine.histograms_data)
+        multimedia_engine.is_built = True
+        print("Motor multimedia configurado correctamente")
+        
+        # Si se proporciona CSV, cargar metadata
+        if request.csv_path and os.path.exists(request.csv_path):
+            import pandas as pd
+            df = pd.read_csv(request.csv_path)
+            multimedia_engine.metadata_df = df
+            print(f"  Metadata cargada desde CSV: {len(df)} registros")
+        
+        # Registrar en el parser SQL
+        sql_parser.multimedia_engines[request.table_name] = multimedia_engine
+        
+        # También registrar en el engine principal para que aparezca en las tablas
+        if hasattr(multimedia_engine, 'metadata_df') and multimedia_engine.metadata_df is not None:
+            headers = list(multimedia_engine.metadata_df.columns)
+        else:
+            headers = ['filename', 'similarity_score']
+        
+        # Usar la instancia global del engine principal
+        engine.table_headers[request.table_name] = headers
+        
+        print(f"Tabla multimedia '{request.table_name}' registrada en sql_parser.multimedia_engines")
+        print(f"Tablas multimedia disponibles: {list(sql_parser.multimedia_engines.keys())}")
+        
+        return APIResponse(
+            success=True,
+            message=f"Tabla multimedia '{request.table_name}' reconstruida exitosamente desde pickles",
+            data={
+                "table_name": request.table_name,
+                "media_type": request.media_type,
+                "feature_method": feature_method,
+                "features_loaded": len(multimedia_engine.features_data) if hasattr(multimedia_engine, 'features_data') else 0,
+                "histograms_loaded": len(multimedia_engine.histograms_data) if hasattr(multimedia_engine, 'histograms_data') else 0,
+                "is_built": multimedia_engine.is_built
+            }
+        )
+    
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"Error importando módulos multimedia: {str(e)}")
+    except Exception as e:
+        print(f"Error reconstruyendo tabla multimedia: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/multimedia/create-table", response_model=APIResponse)
 async def create_multimedia_table(request: CreateMultimediaTableRequest):
@@ -599,6 +728,267 @@ async def get_available_multimedia_methods():
 
 # ========== ENDPOINTS TRADICIONALES Y TEXTUALES (EXISTENTES) ==========
 
+@app.post("/tables/load-pickle", response_model=APIResponse)
+async def load_pickle_table(request: LoadPickleTableRequest):
+    """
+    Cargar una tabla desde un archivo pickle (.pkl)
+    """
+    try:
+        if not os.path.exists(request.pickle_file_path):
+            raise HTTPException(status_code=404, detail=f"Archivo pickle no encontrado: {request.pickle_file_path}")
+        
+        # Detectar si es parte de un conjunto multimedia (histograms, codebook, features)
+        base_path = os.path.dirname(request.pickle_file_path)
+        base_name = os.path.basename(request.pickle_file_path)
+        
+        # Detectar si es un índice SPIMI
+        if 'spimi' in base_name.lower() or 'index' in base_name.lower():
+            print(f"Detectado archivo de índice: {base_name}")
+            
+            # Cargar el pickle para ver qué contiene
+            with open(request.pickle_file_path, 'rb') as f:
+                index_data = pickle.load(f)
+            
+            # Si es un diccionario con estructura de índice SPIMI
+            if isinstance(index_data, dict) and any(key in index_data for key in ['index', 'posting_lists', 'doc_info']):
+                print("Estructura de índice SPIMI detectada")
+                
+                # Extraer información del índice
+                doc_info = index_data.get('doc_info', {})
+                headers = index_data.get('headers', ['content'])
+                
+                # Debug: Ver qué hay en el índice
+                print(f"Contenido del índice SPIMI:")
+                print(f"  - Claves disponibles: {list(index_data.keys())}")
+                print(f"  - Headers guardados: {headers}")
+                if 'metadata' in index_data:
+                    print(f"  - Metadata encontrada: {len(index_data['metadata'])} entradas")
+                if 'original_table' in index_data:
+                    print(f"  - Tabla original: {index_data['original_table']}")
+                
+                # Registrar la tabla textual directamente sin CSV
+                engine.text_tables[request.table_name] = {
+                    'index_path': request.pickle_file_path,
+                    'text_fields': headers,
+                    'csv_path': None,
+                    'type': 'SPIMI',
+                    'doc_count': len(doc_info),
+                    'term_count': len(index_data.get('index', {})),
+                    'metadata': index_data.get('metadata', {})
+                }
+                
+                # Registrar headers
+                engine.table_headers[request.table_name] = headers + ['similarity_score']
+                
+                print(f"Tabla textual '{request.table_name}' registrada exitosamente")
+                print(f"  - Documentos: {len(doc_info)}")
+                print(f"  - Términos: {len(index_data.get('index', {}))}")
+                
+                return APIResponse(
+                    success=True,
+                    message=f"Índice SPIMI cargado exitosamente para tabla '{request.table_name}'",
+                    data={
+                        "table_name": request.table_name,
+                        "index_type": "SPIMI",
+                        "index_path": request.pickle_file_path,
+                        "doc_count": len(doc_info),
+                        "term_count": len(index_data.get('index', {})),
+                        "headers": headers
+                    }
+                )
+            else:
+                # No es un índice SPIMI, continuar con el proceso normal
+                pass
+        
+        # Detectar si es un archivo multimedia
+        elif any(keyword in base_name.lower() for keyword in ['histograms', 'codebook', 'features']):
+            # Extraer el prefijo común
+            prefix = base_name.lower().replace('_histograms.pkl', '').replace('_codebook.pkl', '').replace('_features.pkl', '')
+            
+            # Buscar los otros archivos relacionados
+            # Primero intentar con el patrón estándar
+            histograms_path = os.path.join(base_path, f"{prefix}_histograms.pkl")
+            codebook_path = os.path.join(base_path, f"{prefix}_codebook.pkl")
+            features_path = os.path.join(base_path, f"{prefix}_features.pkl")
+            
+            # Si no existen, buscar archivos que contengan estas palabras clave
+            if not all(os.path.exists(p) for p in [histograms_path, codebook_path, features_path]):
+                import glob
+                histograms_files = glob.glob(os.path.join(base_path, "*histograms*.pkl"))
+                codebook_files = glob.glob(os.path.join(base_path, "*codebook*.pkl"))
+                features_files = glob.glob(os.path.join(base_path, "*features*.pkl"))
+                
+                if histograms_files and codebook_files and features_files:
+                    histograms_path = histograms_files[0]
+                    codebook_path = codebook_files[0]
+                    features_path = features_files[0]
+                    # Actualizar el prefijo basado en los archivos encontrados
+                    prefix = os.path.basename(histograms_path).replace('_histograms.pkl', '')
+            
+            # Si encontramos los 3 archivos, es una tabla multimedia
+            if all(os.path.exists(p) for p in [histograms_path, codebook_path, features_path]):
+                print(f"Detectado conjunto de archivos multimedia para '{prefix}'")
+                
+                # Detectar tipo de media
+                media_type = 'image'  # Por defecto
+                if any(audio_kw in prefix for audio_kw in ['audio', 'sound', 'music', 'fma']):
+                    media_type = 'audio'
+                elif any(img_kw in prefix for img_kw in ['fashion', 'image', 'photo', 'picture']):
+                    media_type = 'image'
+                
+                # Usar el prefijo limpio como nombre de tabla
+                clean_table_name = prefix
+                
+                # Buscar un archivo CSV asociado
+                csv_path = None
+                import glob
+                
+                # Buscar en varios lugares posibles
+                search_patterns = [
+                    os.path.join(base_path, f"{prefix}*.csv"),
+                    os.path.join(os.path.dirname(base_path), f"{prefix}*.csv"),
+                    os.path.join(os.path.dirname(base_path), "datos", f"{prefix}*.csv"),
+                    os.path.join(os.path.dirname(base_path), "..", "datos", f"{prefix}*.csv"),
+                    f"datos/{prefix}*.csv",
+                    f"{prefix}*.csv"
+                ]
+                
+                for pattern in search_patterns:
+                    matches = glob.glob(pattern)
+                    if matches:
+                        csv_path = matches[0]
+                        break
+                
+                # Si no encontramos con el prefijo, buscar cualquier CSV de fashion
+                if not csv_path and 'fashion' in prefix:
+                    for pattern in ["datos/fashion*.csv", "fashion*.csv", "*/fashion*.csv"]:
+                        matches = glob.glob(pattern)
+                        if matches:
+                            csv_path = matches[0]
+                            break
+                
+                print(f"Creando tabla multimedia con nombre: '{clean_table_name}'")
+                print(f"  - Histograms: {histograms_path}")
+                print(f"  - Codebook: {codebook_path}")
+                print(f"  - Features: {features_path}")
+                print(f"  - CSV metadata: {csv_path if csv_path else 'No encontrado'}")
+                
+                # Crear request para multimedia
+                multimedia_request = LoadMultimediaFromPicklesRequest(
+                    table_name=clean_table_name,  # Usar el nombre limpio
+                    histograms_path=histograms_path,
+                    codebook_path=codebook_path,
+                    features_path=features_path,
+                    media_type=media_type,
+                    csv_path=csv_path
+                )
+                
+                # Llamar al endpoint multimedia
+                return await load_multimedia_from_pickles(multimedia_request)
+        
+        # Si no es multimedia, continuar con el proceso normal
+        # Cargar el archivo pickle
+        with open(request.pickle_file_path, 'rb') as f:
+            data = pickle.load(f)
+        
+        # Detectar si es un DataFrame de pandas o una estructura de datos simple
+        if hasattr(data, 'to_csv'):  # Es un DataFrame
+            # Convertir a CSV temporal
+            temp_csv = f"temp_{request.table_name}.csv"
+            data.to_csv(temp_csv, index=False)
+            
+            # Cargar usando el motor existente
+            result = engine.load_csv(
+                table=request.table_name,
+                path=temp_csv,
+                tipo=request.index_type,
+                index_field=0  # Por defecto usar primera columna
+            )
+            
+            # Limpiar archivo temporal
+            if os.path.exists(temp_csv):
+                os.remove(temp_csv)
+                
+            headers = list(data.columns)
+            record_count = len(data)
+            
+        elif isinstance(data, dict):
+            # Si es un diccionario con estructura de índice
+            if 'embeddings' in data and 'metadata' in data:
+                # Es una estructura de embeddings
+                embeddings = data['embeddings']
+                metadata = data.get('metadata', {})
+                
+                # Registrar en el engine como tabla de embeddings
+                engine.register_embedding_table(
+                    table_name=request.table_name,
+                    embeddings=embeddings,
+                    metadata=metadata,
+                    pickle_path=request.pickle_file_path
+                )
+                
+                headers = ['embedding_id'] + list(metadata.keys()) if metadata else ['embedding_id', 'embedding_vector']
+                record_count = len(embeddings) if hasattr(embeddings, '__len__') else 0
+                result = f"Tabla de embeddings '{request.table_name}' cargada exitosamente desde pickle"
+                
+            else:
+                # Intentar convertir a formato tabular
+                raise HTTPException(status_code=400, detail="Formato de pickle no reconocido. Debe ser DataFrame o estructura de embeddings.")
+        
+        elif isinstance(data, list):
+            # Lista de registros
+            if not data:
+                raise HTTPException(status_code=400, detail="El archivo pickle está vacío")
+            
+            # Crear CSV temporal
+            temp_csv = f"temp_{request.table_name}.csv"
+            
+            # Detectar headers
+            if isinstance(data[0], dict):
+                headers = list(data[0].keys())
+                with open(temp_csv, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.DictWriter(f, fieldnames=headers)
+                    writer.writeheader()
+                    writer.writerows(data)
+            else:
+                headers = [f"column_{i}" for i in range(len(data[0]))]
+                with open(temp_csv, 'w', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f)
+                    writer.writerow(headers)
+                    writer.writerows(data)
+            
+            # Cargar usando el motor
+            result = engine.load_csv(
+                table=request.table_name,
+                path=temp_csv,
+                tipo=request.index_type,
+                index_field=0
+            )
+            
+            # Limpiar archivo temporal
+            if os.path.exists(temp_csv):
+                os.remove(temp_csv)
+                
+            record_count = len(data)
+        
+        else:
+            raise HTTPException(status_code=400, detail=f"Tipo de datos en pickle no soportado: {type(data)}")
+        
+        return APIResponse(
+            success=True,
+            message=result,
+            data={
+                "table_name": request.table_name,
+                "pickle_path": request.pickle_file_path,
+                "headers": headers,
+                "record_count": record_count,
+                "data_type": type(data).__name__
+            }
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/tables/create", response_model=APIResponse)
 async def create_table(request: CreateTableRequest):
     """
@@ -800,6 +1190,74 @@ async def upload_csv_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/tables/upload-pickle-file")
+async def upload_pickle_file(file: UploadFile = File(...)):
+    """
+    Subir un archivo pickle al servidor
+    """
+    try:
+        print(f"Recibiendo archivo: {file.filename}")
+        print(f"Content-Type: {file.content_type}")
+        
+        # Validar extensión
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="No se proporcionó nombre de archivo")
+        
+        if not file.filename.endswith('.pkl'):
+            raise HTTPException(status_code=400, detail=f"Solo se permiten archivos .pkl. Archivo recibido: {file.filename}")
+        
+        # Crear directorio de datos si no existe
+        os.makedirs("datos/pickles", exist_ok=True)
+        
+        # Guardar archivo subido
+        file_path = f"datos/pickles/{file.filename}"
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Intentar cargar el pickle para validar
+        try:
+            print(f"Intentando cargar pickle desde: {file_path}")
+            with open(file_path, 'rb') as f:
+                data = pickle.load(f)
+                data_type = type(data).__name__
+                print(f"Tipo de datos cargado: {data_type}")
+                
+                # Información básica sobre el contenido
+                info = {
+                    "data_type": data_type,
+                    "file_size": len(content)
+                }
+                
+                if hasattr(data, 'shape'):
+                    info["shape"] = str(data.shape)
+                    print(f"Shape: {data.shape}")
+                elif hasattr(data, '__len__'):
+                    info["length"] = len(data)
+                    print(f"Length: {len(data)}")
+                
+        except Exception as e:
+            print(f"Error al cargar pickle: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            os.remove(file_path)  # Limpiar archivo inválido
+            raise HTTPException(status_code=400, detail=f"Archivo pickle inválido: {str(e)}")
+        
+        return APIResponse(
+            success=True,
+            message=f"Archivo pickle {file.filename} subido exitosamente",
+            data={
+                "file_path": file_path,
+                "filename": file.filename,
+                **info
+            }
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/records/insert", response_model=APIResponse)
 async def insert_record(request: InsertRequest):
     """
@@ -903,10 +1361,70 @@ async def execute_sql(request: SQLQueryRequest):
         if isinstance(result, dict) and 'results' in result:
             # Resultado multimedia estructurado
             multimedia_results = result['results']
+            
+            # Determinar columnas basado en los campos solicitados
+            query_info = result.get('query_info', {})
+            fields = query_info.get('fields', ['*'])
+            
+            # Construir columnas y filas basado en los campos solicitados
+            if fields == ['*']:
+                # Para SELECT *, incluir todos los campos disponibles
+                if multimedia_results:
+                    first_result = multimedia_results[0]
+                    metadata_keys = list(first_result.get('metadata', {}).keys())
+                    columns = ['rank', 'filename', 'similarity'] + metadata_keys
+                    # Asegurar que audio_path esté presente para búsquedas de audio
+                    if query_type == "multimedia_search" and table_name and "audio" in table_name.lower():
+                        if 'audio_path' not in columns:
+                            columns.append('audio_path')
+                else:
+                    columns = ['rank', 'filename', 'similarity']
+            else:
+                # Para campos específicos
+                columns = fields.copy()
+                if 'similarity' not in columns:
+                    columns.append('similarity')
+                # Asegurar que audio_path esté presente para búsquedas de audio
+                if query_type == "multimedia_search" and table_name and "audio" in table_name.lower():
+                    if 'audio_path' not in columns:
+                        columns.append('audio_path')
+                # Asegurar que image_path esté presente para búsquedas de imágenes
+                elif query_type == "multimedia_search" and table_name and ("fashion" in table_name.lower() or "image" in table_name.lower()):
+                    if 'image_path' not in columns:
+                        columns.append('image_path')
+            
+            # Construir filas con todos los datos
+            rows = []
+            for res in multimedia_results:
+                row = []
+                metadata = res.get('metadata', {})
+                
+                for col in columns:
+                    if col == 'rank':
+                        row.append(str(res.get('rank', '')))
+                    elif col == 'filename':
+                        row.append(res.get('filename', ''))
+                    elif col == 'similarity':
+                        row.append(str(res.get('similarity', 0)))
+                    elif col == 'file_path':
+                        row.append(res.get('file_path', ''))
+                    elif col == 'audio_path':
+                        # Para audio_path, usar el valor de metadata o file_path como fallback
+                        audio_path = metadata.get('audio_path', res.get('file_path', ''))
+                        row.append(audio_path)
+                    elif col == 'image_path':
+                        # Para image_path, usar el valor de metadata o file_path como fallback
+                        image_path = metadata.get('image_path', res.get('file_path', ''))
+                        row.append(image_path)
+                    else:
+                        # Buscar en metadata
+                        row.append(str(metadata.get(col, '')))
+                
+                rows.append(row)
+            
             parsed_data = {
-                "columns": ["rank", "filename", "similarity"],
-                "rows": [[str(i), res.get('filename', ''), str(res.get('similarity', 0))] 
-                        for i, res in enumerate(multimedia_results, 1)],
+                "columns": columns,
+                "rows": rows,
                 "count": len(multimedia_results)
             }
             
@@ -981,7 +1499,7 @@ async def execute_sql(request: SQLQueryRequest):
 @app.get("/tables", response_model=APIResponse)
 async def list_tables():
     """
-    Listar todas las tablas disponibles (tradicionales + textuales + multimedia)
+    Listar todas las tablas disponibles (tradicionales + textuales + multimedia + embeddings)
     """
     try:
         all_tables_info = {}
@@ -1036,15 +1554,31 @@ async def list_tables():
                 "record_count": multimedia_info.get('record_count', multimedia_info.get('features_extracted', 0))
             }
         
+        # Tablas de embeddings
+        embedding_tables = getattr(engine, 'embedding_tables', {})
+        for table_name, info in embedding_tables.items():
+            headers = engine.get_table_headers(table_name)
+            embeddings = info.get('embeddings')
+            all_tables_info[table_name] = {
+                "type": "embeddings",
+                "index_type": "Embeddings",
+                "headers": headers,
+                "headers_count": len(headers),
+                "pickle_path": info.get('pickle_path', ''),
+                "embeddings_shape": embeddings.shape if hasattr(embeddings, 'shape') else 'unknown',
+                "record_count": len(embeddings) if hasattr(embeddings, '__len__') else 0
+            }
+        
         return APIResponse(
             success=True,
-            message=f"Se encontraron {len(all_tables_info)} tablas ({len(engine.tables) - len(sql_parser.multimedia_engines)} tradicionales, {len(text_tables)} textuales, {len(sql_parser.multimedia_engines)} multimedia)",
+            message=f"Se encontraron {len(all_tables_info)} tablas ({len(engine.tables) - len(sql_parser.multimedia_engines)} tradicionales, {len(text_tables)} textuales, {len(sql_parser.multimedia_engines)} multimedia, {len(embedding_tables)} embeddings)",
             data={
                 "tables": all_tables_info, 
                 "count": len(all_tables_info),
                 "traditional_count": len(engine.tables) - len(sql_parser.multimedia_engines),
                 "textual_count": len(text_tables),
-                "multimedia_count": len(sql_parser.multimedia_engines)
+                "multimedia_count": len(sql_parser.multimedia_engines),
+                "embeddings_count": len(embedding_tables)
             }
         )
     

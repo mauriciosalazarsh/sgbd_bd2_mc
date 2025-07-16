@@ -43,7 +43,8 @@ class KNNInvertedIndex:
         if not histograms_data:
             raise ValueError("No hay datos de histogramas para construir el índice")
             
-        print("Construyendo índice invertido...")
+        print("\n🔍 Construyendo índice invertido KNN...")
+        print("=" * 50)
         start_time = time.time()
         
         # Limpiar estructuras previas
@@ -53,6 +54,7 @@ class KNNInvertedIndex:
         
         # Obtener dimensión del vocabulario
         self.vocab_size = histograms_data[0][1].shape[0]
+        print(f"📊 Dimensión del vocabulario: {self.vocab_size}")
         
         # Construir matriz de histogramas para TF-IDF
         if self.use_tfidf:
@@ -63,7 +65,13 @@ class KNNInvertedIndex:
             weighted_histograms = np.vstack([hist for _, hist in histograms_data])
         
         # Construir índice invertido
+        total_docs = len(histograms_data)
+        print(f"📝 Indexando {total_docs} documentos...")
+        
         for doc_id, (file_path, histogram) in enumerate(histograms_data):
+            if doc_id % 100 == 0 or doc_id == total_docs - 1:
+                progress = (doc_id + 1) / total_docs * 100
+                print(f"\rProgreso: {progress:.1f}% ({doc_id + 1}/{total_docs})", end='', flush=True)
             # Usar histograma ponderado con TF-IDF si está habilitado
             if self.use_tfidf:
                 weighted_histogram = weighted_histograms[doc_id]
@@ -82,9 +90,9 @@ class KNNInvertedIndex:
                     self.inverted_index[word_id].append((doc_id, float(weight)))
         
         build_time = time.time() - start_time
-        print(f"Índice construido en {build_time:.2f} segundos")
-        print(f"Documentos indexados: {len(self.documents)}")
-        print(f"Términos en vocabulario: {len(self.inverted_index)}")
+        print(f"\n✅ Índice construido en {build_time:.2f} segundos")
+        print(f"📊 Documentos indexados: {len(self.documents)}")
+        print(f"📊 Términos en vocabulario: {len(self.inverted_index)}")
         
     def search(self, query_histogram: np.ndarray, k: int = 10) -> List[Tuple[str, float]]:
         """

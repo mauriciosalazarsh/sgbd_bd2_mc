@@ -211,12 +211,12 @@ class InvertedIndex:
         self.total_documents = 0
         
         # Archivos de persistencia - compatibles con estructura existente
-        self.index_file = f"indices/{index_name}_inverted_index.pkl"
-        self.metadata_file = f"indices/{index_name}_metadata.pkl"
-        self.stats_file = f"indices/{index_name}_stats.pkl"
+        self.index_file = f"embeddings/{index_name}_inverted_index.pkl"
+        self.metadata_file = f"embeddings/{index_name}_metadata.pkl"
+        self.stats_file = f"embeddings/{index_name}_stats.pkl"
         
-        # Asegurar que existe el directorio indices
-        os.makedirs('indices', exist_ok=True)
+        # Asegurar que existe el directorio embeddings
+        os.makedirs('embeddings', exist_ok=True)
         
         # Configuración
         self.use_spimi = SPIMI_AVAILABLE and len(text_fields) > 0

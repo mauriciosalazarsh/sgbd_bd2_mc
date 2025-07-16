@@ -461,6 +461,29 @@ export class DatabaseAPI {
     });
   }
 
+  static async loadPickleTable(params: {
+    table_name: string;
+    pickle_file_path: string;
+    index_type?: string;
+  }): Promise<APIResponse<{
+    table_name: string;
+    pickle_path: string;
+    headers: string[];
+    record_count: number;
+    data_type: string;
+  }>> {
+    const requestBody = {
+      table_name: params.table_name,
+      pickle_file_path: params.pickle_file_path,
+      index_type: params.index_type || 'sequential'
+    };
+
+    return this.makeRequest('/tables/load-pickle', {
+      method: 'POST',
+      body: JSON.stringify(requestBody),
+    });
+  }
+
   static async insertRecord(tableName: string, values: string[]): Promise<APIResponse<{ inserted_values: string[] }>> {
     const requestBody = {
       table_name: tableName,

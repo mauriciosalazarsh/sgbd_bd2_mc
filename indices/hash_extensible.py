@@ -20,7 +20,7 @@ class Bucket:
         return len(self.records) >= BUCKET_CAPACITY
 
 class ExtendibleHash(BaseIndex):
-    def __init__(self, dir_file: str = 'hash_dir.pkl', data_file: str = 'hash_data.bin'):
+    def __init__(self, dir_file: str = 'embeddings/hash_dir.pkl', data_file: str = 'embeddings/hash_data.bin'):
         self.dir_file = dir_file
         self.data_file = data_file
         self.global_depth: int = 1
@@ -29,7 +29,7 @@ class ExtendibleHash(BaseIndex):
         
         # Crear directorios necesarios
         os.makedirs(os.path.dirname(dir_file), exist_ok=True)
-        os.makedirs("indices/buckets", exist_ok=True)
+        os.makedirs("embeddings/buckets", exist_ok=True)
         
         self._init_directory()
 
@@ -47,8 +47,8 @@ class ExtendibleHash(BaseIndex):
         self._save_directory()
 
     def _create_bucket(self, local_depth: int) -> str:
-        bucket_id = len([f for f in os.listdir("indices/buckets") if f.startswith("bucket_")]) if os.path.exists("indices/buckets") else 0
-        bucket_path = f"indices/buckets/bucket_{bucket_id}_{local_depth}.pkl"
+        bucket_id = len([f for f in os.listdir("embeddings/buckets") if f.startswith("bucket_")]) if os.path.exists("embeddings/buckets") else 0
+        bucket_path = f"embeddings/buckets/bucket_{bucket_id}_{local_depth}.pkl"
         
         with open(bucket_path, 'wb') as f:
             pickle.dump(Bucket(local_depth), f)
@@ -224,8 +224,8 @@ class ExtendibleHash(BaseIndex):
             current_bucket = self._load_bucket(current_path)
         
         # Crear nuevo bucket de overflow
-        overflow_id = len([f for f in os.listdir("indices/buckets") if f.startswith("overflow_")]) if os.path.exists("indices/buckets") else 0
-        overflow_path = f"indices/buckets/overflow_{overflow_id}.pkl"
+        overflow_id = len([f for f in os.listdir("embeddings/buckets") if f.startswith("overflow_")]) if os.path.exists("embeddings/buckets") else 0
+        overflow_path = f"embeddings/buckets/overflow_{overflow_id}.pkl"
         overflow_bucket = Bucket(current_bucket.local_depth)
         overflow_bucket.records.append(values)
         

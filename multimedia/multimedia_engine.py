@@ -32,6 +32,7 @@ class MultimediaEngine:
             raise ValueError("media_type debe ser 'image' o 'audio'")
         
         self.codebook_builder = CodebookBuilder(n_clusters=n_clusters, feature_type=media_type)
+        self.codebook_builder.method = feature_method  # Pass the method to codebook builder
         self.knn_sequential = KNNSequential(use_tfidf=True)
         self.knn_inverted = KNNInvertedIndex(use_tfidf=True)
         
@@ -42,7 +43,7 @@ class MultimediaEngine:
         
     def extract_features_from_paths(self, file_paths: List[str], 
                                    save_features: bool = True, 
-                                   features_path: str = "features.pkl") -> List[Tuple[str, Any]]:
+                                   features_path: str = "embeddings/features.pkl") -> List[Tuple[str, Any]]:
         """
         Extrae características de una lista de archivos
         
@@ -70,7 +71,7 @@ class MultimediaEngine:
                                        path_column: str,
                                        base_path: str = "",
                                        save_features: bool = True,
-                                       features_path: str = "features.pkl") -> List[Tuple[str, Any]]:
+                                       features_path: str = "embeddings/features.pkl") -> List[Tuple[str, Any]]:
         """
         Extrae características de archivos especificados en un DataFrame
         
@@ -97,7 +98,7 @@ class MultimediaEngine:
     
     def build_codebook(self, features_data: Optional[List[Tuple[str, Any]]] = None,
                       save_codebook: bool = True,
-                      codebook_path: str = "codebook.pkl") -> Any:
+                      codebook_path: str = "embeddings/codebook.pkl") -> Any:
         """
         Construye el diccionario visual/acústico
         
@@ -125,7 +126,7 @@ class MultimediaEngine:
     
     def create_histograms(self, features_data: Optional[List[Tuple[str, Any]]] = None,
                          save_histograms: bool = True,
-                         histograms_path: str = "histograms.pkl") -> List[Tuple[str, Any]]:
+                         histograms_path: str = "embeddings/histograms.pkl") -> List[Tuple[str, Any]]:
         """
         Crea histogramas de Bag of Words para todos los objetos
         
@@ -199,7 +200,12 @@ class MultimediaEngine:
         # Extraer características del query
         query_features = self.feature_extractor.extract_features(query_path)
         if query_features is None:
-            raise ValueError(f"No se pudieron extraer características de: {query_path}")
+            error_msg = f"No se pudieron extraer características de: {query_path}. "
+            if self.media_type == 'audio':
+                error_msg += "El archivo de audio puede estar corrupto o en un formato no soportado."
+            else:
+                error_msg += "El archivo de imagen puede estar corrupto o en un formato no soportado."
+            raise ValueError(error_msg)
         
         # Crear histograma del query
         query_histogram = self.codebook_builder.create_bow_histogram(query_features)
@@ -306,7 +312,7 @@ class MultimediaEngine:
         
         return stats
     
-    def save_complete_system(self, base_path: str = "multimedia_system"):
+    def save_complete_system(self, base_path: str = "embeddings/multimedia_system"):
         """Guarda todo el sistema construido"""
         os.makedirs(base_path, exist_ok=True)
         
@@ -337,7 +343,7 @@ class MultimediaEngine:
         
         print(f"Sistema completo guardado en: {base_path}")
     
-    def load_complete_system(self, base_path: str = "multimedia_system"):
+    def load_complete_system(self, base_path: str = "embeddings/multimedia_system"):
         """Carga un sistema previamente guardado"""
         # Cargar características
         features_path = os.path.join(base_path, "features.pkl")

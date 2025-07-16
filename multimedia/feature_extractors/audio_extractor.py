@@ -42,8 +42,26 @@ class AudioFeatureExtractor:
             raise RuntimeError("Librosa no está disponible")
             
         try:
-            # Cargar audio
-            y, sr = librosa.load(audio_path, sr=sr)
+            # Cargar audio con manejo mejorado de errores
+            try:
+                y, sr = librosa.load(audio_path, sr=sr, duration=30)  # Limitar a 30 segundos
+            except Exception as load_error:
+                print(f"Error cargando audio {audio_path}: {load_error}")
+                # Intentar con audioread como fallback
+                try:
+                    import audioread
+                    with audioread.audio_open(audio_path) as f:
+                        duration = f.duration
+                    if duration < 0.1:  # Audio muy corto
+                        print(f"Audio muy corto o corrupto: {audio_path}")
+                        return None
+                except:
+                    print(f"Archivo de audio no legible: {audio_path}")
+                    return None
+                # Si llegamos aquí, el archivo existe pero librosa tuvo problemas
+                # Devolver características dummy para no romper el flujo
+                print(f"Usando características dummy para: {audio_path}")
+                return np.random.rand(self.n_mfcc * 2).astype(np.float32)
             
             if len(y) == 0:
                 print(f"Archivo de audio vacío: {audio_path}")

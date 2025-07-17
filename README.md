@@ -155,7 +155,7 @@ El sistema soporta tres métodos de extracción de características de audio:
 ```sql
 -- Crear tabla de audio con MFCC
 CREATE MULTIMEDIA TABLE fma_audio 
-FROM FILE "datos/fma_subset_2000.csv" 
+FROM FILE "datos/fma_complete_dataset.csv" 
 USING audio WITH METHOD mfcc CLUSTERS 256
 ```
 

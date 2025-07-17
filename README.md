@@ -12,7 +12,7 @@ Este proyecto implementa un sistema de base de datos con capacidades de búsqued
 
 ### 1. Clonar el repositorio
 ```bash
-git clone [url-del-repositorio]
+git clone https://github.com/mauriciosalazarsh/sgbd_bd2_mc.git
 cd Proyecto1
 ```
 
